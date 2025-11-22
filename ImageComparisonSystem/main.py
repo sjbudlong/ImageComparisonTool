@@ -6,10 +6,15 @@ Compares two sets of images and generates HTML reports with diff analysis.
 
 import sys
 import argparse
+import logging
 from pathlib import Path
 from typing import Optional
 import webbrowser
 import os
+
+# Setup logging as early as possible
+from logging_config import setup_logging, LOG_LEVELS
+logger = setup_logging(level=logging.INFO)
 
 # Check dependencies first before importing other modules
 try:
@@ -22,14 +27,13 @@ try:
         import PIL
         import cv2
     except ImportError as e:
-        print(f"\n✗ Critical dependency missing: {e}")
-        print("\nPlease install required packages. Run:")
-        print("  python dependencies.py")
-        print("\nFor offline installation, see dependencies.py --help")
+        logger.critical(f"Critical dependency missing: {e}")
+        logger.info("Please install required packages. Run: python dependencies.py")
+        logger.info("For offline installation, see dependencies.py --help")
         sys.exit(1)
 except ImportError:
-    print("\n✗ Warning: dependency checker not available")
-    print("  Continuing anyway, but errors may occur if packages are missing\n")
+    logger.warning("dependency checker not available")
+    logger.warning("Continuing anyway, but errors may occur if packages are missing")
 
 from config import Config
 from ui import ComparisonUI
@@ -141,6 +145,19 @@ def parse_arguments() -> Optional[tuple]:
         action='store_true',
         help='Launch the GUI mode (interactive dialog) instead of CLI'
     )
+    parser.add_argument(
+        '--log-level',
+        type=str,
+        default='info',
+        choices=['debug', 'info', 'warning', 'error', 'critical'],
+        help='Set logging level (default: info)'
+    )
+    parser.add_argument(
+        '--log-file',
+        type=str,
+        default=None,
+        help='Path to log file (optional, logs to console by default)'
+    )
     
     args = parser.parse_args()
     
@@ -156,8 +173,8 @@ def parse_arguments() -> Optional[tuple]:
             if len(color_parts) != 3:
                 raise ValueError
             highlight_color = tuple(color_parts)
-        except:
-            print("Warning: Invalid highlight color format, using red (255,0,0)")
+        except (ValueError, TypeError):
+            logger.warning("Invalid highlight color format, using red (255,0,0)")
             highlight_color = (255, 0, 0)
         
         # Determine histogram equalization setting
@@ -188,14 +205,32 @@ def main():
     """Main entry point for the Image Comparison Tool."""
     # Parse arguments first to check for dependency check flag
     args = argparse.Namespace()
+    
+    # Handle log level configuration early
+    if '--log-level' in sys.argv:
+        idx = sys.argv.index('--log-level')
+        if idx + 1 < len(sys.argv):
+            log_level = sys.argv[idx + 1].lower()
+            if log_level in LOG_LEVELS:
+                # Reconfigure logger with specified level
+                setup_logging(level=LOG_LEVELS[log_level])
+    
+    # Handle log file configuration
+    if '--log-file' in sys.argv:
+        idx = sys.argv.index('--log-file')
+        if idx + 1 < len(sys.argv):
+            log_file = sys.argv[idx + 1]
+            # Reconfigure logger with log file
+            setup_logging(log_file=Path(log_file))
+    
     if '--check-dependencies' in sys.argv:
         try:
             from dependencies import DependencyChecker
             DependencyChecker.check_and_exit_if_missing(skip_tkinter=False)
-            print("\n✓ All dependencies satisfied!")
+            logger.info("All dependencies satisfied!")
             sys.exit(0)
         except ImportError:
-            print("✗ Dependency checker not available")
+            logger.error("Dependency checker not available")
             sys.exit(1)
     
     # Run full dependency check unless skipped
@@ -212,12 +247,12 @@ def main():
     
     if config is None:
         # Launch UI if not all arguments provided
-        print("Launching UI (not all command line arguments provided)...")
+        logger.info("Launching UI (not all command line arguments provided)...")
         ui = ComparisonUI()
         config = ui.run()
         
         if config is None:
-            print("Operation cancelled by user")
+            logger.info("Operation cancelled by user")
             return
         # When using UI, don't open report by default
         open_report_flag = False
@@ -226,21 +261,21 @@ def main():
         open_report_flag = args.open_report
     
     # Run the comparison
-    print(f"\nStarting image comparison...")
-    print(f"Base directory: {config.base_dir}")
-    print(f"New images: {config.new_dir}")
-    print(f"Known good images: {config.known_good_dir}")
-    print(f"Histogram equalization: {'enabled' if config.use_histogram_equalization else 'disabled'}")
-    print(f"Output will be saved to: {config.html_dir}\n")
+    logger.info("Starting image comparison...")
+    logger.info(f"Base directory: {config.base_dir}")
+    logger.info(f"New images: {config.new_dir}")
+    logger.info(f"Known good images: {config.known_good_dir}")
+    logger.info(f"Histogram equalization: {'enabled' if config.use_histogram_equalization else 'disabled'}")
+    logger.info(f"Output will be saved to: {config.html_dir}")
     
     comparator = ImageComparator(config)
     results = comparator.compare_all()
     
-    print(f"\nComparison complete!")
-    print(f"  - {len(results)} image pairs compared")
+    logger.info("Comparison complete!")
+    logger.info(f"{len(results)} image pairs compared")
     report_dir = config.base_dir / config.html_dir
-    print(f"  - Reports saved to: {report_dir}")
-    print(f"  - Open 'summary.html' to view results")
+    logger.info(f"Reports saved to: {report_dir}")
+    logger.info(f"Open 'summary.html' to view results")
     
     # Open report in browser if --open-report flag was provided
     if open_report_flag and results:
@@ -250,9 +285,9 @@ def main():
                 # Convert to absolute path and open in browser
                 report_url = summary_path.resolve().as_uri()
                 webbrowser.open(report_url)
-                print(f"\nOpening report in browser...")
+                logger.info("Opening report in browser...")
             except Exception as e:
-                print(f"\nWarning: Could not open report in browser: {e}")
+                logger.warning(f"Could not open report in browser: {e}")
 
 
 if __name__ == '__main__':

@@ -2,10 +2,13 @@
 HTML report generation for image comparison results.
 """
 
+import logging
 from pathlib import Path
 from typing import List
 from config import Config
 from models import ComparisonResult
+
+logger = logging.getLogger("ImageComparison")
 
 
 class ReportGenerator:
@@ -60,11 +63,9 @@ class ReportGenerator:
             
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(html)
-            print(f"    + Generated report: {output_path.name}")
+            logger.info(f"Generated report: {output_path.name}")
         except Exception as e:
-            print(f"    - Error generating report for {result.filename}: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Error generating report for {result.filename}: {e}", exc_info=True)
     
     def generate_summary_report(self, results: List[ComparisonResult]):
         """Generate summary HTML report listing all comparisons."""
@@ -95,11 +96,9 @@ class ReportGenerator:
             
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(summary_html)
-            print(f"  + Generated summary report: summary.html")
+            logger.info("Generated summary report: summary.html")
         except Exception as e:
-            print(f"  - Error generating summary report: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Error generating summary report: {e}", exc_info=True)
     
     def _get_relative_path(self, path: Path) -> str:
         """Get relative path from HTML directory to image."""

@@ -13,3 +13,7 @@ matplotlib>=3.7.0
 
 # GUI (optional - only needed if not using CLI)
 # tkinter comes with Python standard library
+
+# Development and Testing
+pytest>=7.0.0
+pytest-cov>=4.0.0
