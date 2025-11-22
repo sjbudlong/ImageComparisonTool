@@ -4,9 +4,12 @@ Validates all required packages are installed before running.
 """
 
 import sys
+import logging
 import importlib.util
 from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
+
+logger = logging.getLogger("ImageComparison")
 
 
 @dataclass
@@ -86,11 +89,14 @@ class DependencyChecker:
         Returns:
             Tuple of (is_installed, version, error_message)
         """
+        logger.debug(f"Checking dependency: {dep.package_name}")
         try:
             # Check if package can be imported
             spec = importlib.util.find_spec(dep.import_name)
             if spec is None:
-                return False, None, f"{dep.package_name} is not installed"
+                msg = f"{dep.package_name} is not installed"
+                logger.warning(msg)
+                return False, None, msg
             
             # Import and get version
             module = importlib.import_module(dep.import_name)
@@ -106,12 +112,16 @@ class DependencyChecker:
                         version = str(version)
                     break
             
+            logger.info(f"✓ {dep.package_name} ({version}) is installed")
             return True, version, None
             
         except ImportError as e:
+            logger.warning(f"Failed to import {dep.package_name}: {e}")
             return False, None, str(e)
         except Exception as e:
-            return False, None, f"Error checking {dep.package_name}: {str(e)}"
+            error_msg = f"Error checking {dep.package_name}: {str(e)}"
+            logger.error(error_msg)
+            return False, None, error_msg
     
     @classmethod
     def check_all(cls, verbose: bool = True) -> Tuple[bool, Dict[str, dict]]:
@@ -119,7 +129,7 @@ class DependencyChecker:
         Check all dependencies.
         
         Args:
-            verbose: Whether to print detailed information
+            verbose: Whether to log detailed information
             
         Returns:
             Tuple of (all_satisfied, results_dict)
@@ -128,10 +138,9 @@ class DependencyChecker:
         all_satisfied = True
         
         if verbose:
-            print("=" * 70)
-            print("DEPENDENCY CHECK")
-            print("=" * 70)
-            print()
+            logger.info("=" * 70)
+            logger.info("DEPENDENCY CHECK")
+            logger.info("=" * 70)
         
         for dep in cls.DEPENDENCIES:
             is_installed, version, error = cls.check_package(dep)
@@ -147,23 +156,20 @@ class DependencyChecker:
                 all_satisfied = False
             
             if verbose:
-                status = "✓" if is_installed else "✗"
-                print(f"[{status}] {dep.package_name:20s}", end="")
-                
+                status = "installed" if is_installed else "missing"
                 if is_installed:
                     version_str = f"v{version}" if version else "version unknown"
-                    print(f" {version_str:15s} - {dep.description}")
+                    logger.info(f"[{status:8s}] {dep.package_name:20s} {version_str:15s} - {dep.description}")
                 else:
-                    print(f" MISSING - {dep.description}")
+                    logger.warning(f"[{status:8s}] {dep.package_name:20s} MISSING - {dep.description}")
         
         if verbose:
-            print()
-            print("=" * 70)
+            logger.info("=" * 70)
             
             if all_satisfied:
-                print("✓ All dependencies are installed!")
+                logger.info("All dependencies are installed!")
             else:
-                print("✗ Some dependencies are missing. See installation instructions below.")
+                logger.warning("Some dependencies are missing. See installation instructions below.")
             
             print("=" * 70)
         
@@ -283,10 +289,10 @@ class DependencyChecker:
         try:
             with open(output_file, 'w') as f:
                 f.write('\n'.join(lines))
-            print(f"\n✓ Requirements saved to: {output_file}")
-            print("  Use 'pip install -r requirements-freeze.txt' to install exact versions")
+            logger.info(f"Requirements saved to: {output_file}")
+            logger.info("Use 'pip install -r requirements-freeze.txt' to install exact versions")
         except Exception as e:
-            print(f"\n✗ Error saving requirements: {e}")
+            logger.error(f"Error saving requirements: {e}", exc_info=True)
 
 
 def main():

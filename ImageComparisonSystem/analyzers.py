@@ -3,11 +3,14 @@ Modular image analysis components.
 Each analyzer extracts specific metrics from image comparisons.
 """
 
+import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 import numpy as np
 from PIL import Image
 from skimage.metrics import structural_similarity as ssim
+
+logger = logging.getLogger("ImageComparison")
 
 
 class ImageAnalyzer(ABC):
@@ -50,6 +53,7 @@ class PixelDifferenceAnalyzer(ImageAnalyzer):
     
     def analyze(self, img1: np.ndarray, img2: np.ndarray) -> Dict[str, Any]:
         """Calculate pixel difference metrics."""
+        logger.debug(f"Analyzing pixel differences with threshold={self.threshold}")
         # Calculate absolute difference
         diff = np.abs(img1.astype(float) - img2.astype(float))
         
@@ -64,6 +68,7 @@ class PixelDifferenceAnalyzer(ImageAnalyzer):
         # Calculate max difference
         max_diff = np.max(diff)
         
+        logger.info(f"Pixel analysis complete: {percent_different:.2f}% different, MAE={mae:.4f}")
         return {
             'percent_different': round(percent_different, 4),
             'changed_pixels': int(changed_pixels),
@@ -83,6 +88,7 @@ class StructuralSimilarityAnalyzer(ImageAnalyzer):
     
     def analyze(self, img1: np.ndarray, img2: np.ndarray) -> Dict[str, Any]:
         """Calculate SSIM and related metrics."""
+        logger.debug("Analyzing structural similarity")
         # Convert to grayscale if color
         if len(img1.shape) == 3:
             img1_gray = np.mean(img1, axis=2).astype(np.uint8)
@@ -98,6 +104,7 @@ class StructuralSimilarityAnalyzer(ImageAnalyzer):
             full=True,
             data_range=255
         )
+        logger.info(f"SSIM analysis complete: score={ssim_value:.6f}")
         
         return {
             'ssim_score': round(float(ssim_value), 6),

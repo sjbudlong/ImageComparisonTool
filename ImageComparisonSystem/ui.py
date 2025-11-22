@@ -3,17 +3,21 @@ UI module for image comparison configuration.
 Uses tkinter for a simple GUI interface.
 """
 
+import logging
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
 from typing import Optional
 from config import Config
 
+logger = logging.getLogger("ImageComparison")
+
 
 class ComparisonUI:
     """GUI for configuring image comparison settings."""
     
     def __init__(self):
+        logger.debug("Initializing ComparisonUI")
         self.config: Optional[Config] = None
         self.root = tk.Tk()
         self.root.title("Image Comparison Configuration")
@@ -256,13 +260,16 @@ class ComparisonUI:
     
     def _on_start(self):
         """Validate inputs and create config."""
+        logger.debug("Starting comparison from UI")
         try:
             # Validate inputs
             if not self.base_dir_var.get():
+                logger.warning("Base directory not selected")
                 messagebox.showerror("Error", "Please select a base directory")
                 return
             
             if not self.new_dir_var.get():
+                logger.warning("New images directory not specified")
                 messagebox.showerror("Error", "Please specify new images directory")
                 return
             

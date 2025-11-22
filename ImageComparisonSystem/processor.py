@@ -2,6 +2,7 @@
 Image processing utilities for diff generation and visualization.
 """
 
+import logging
 import numpy as np
 from PIL import Image, ImageDraw
 import cv2
@@ -13,6 +14,8 @@ import matplotlib.pyplot as plt
 import io
 import base64
 
+logger = logging.getLogger("ImageComparison")
+
 
 class ImageProcessor:
     """Handles image diff generation and visualization."""
@@ -23,6 +26,7 @@ class ImageProcessor:
             config: Configuration object with processing settings
         """
         self.config = config
+        logger.debug("ImageProcessor initialized")
     
     @staticmethod
     def equalize_histogram(img: np.ndarray) -> np.ndarray:
@@ -35,11 +39,13 @@ class ImageProcessor:
         Returns:
             Histogram equalized image
         """
+        logger.debug(f"Applying histogram equalization to image shape {img.shape}")
         if len(img.shape) == 3:
             # Color image - equalize each channel
             result = np.zeros_like(img)
             for i in range(img.shape[2]):
                 result[:, :, i] = cv2.equalizeHist(img[:, :, i])
+        logger.debug("Histogram equalization complete")
             return result
         else:
             # Grayscale
@@ -151,9 +157,11 @@ class ImageProcessor:
         
         # Apply histogram equalization if requested
         if equalize:
+            logger.debug("Applying histogram equalization")
             img1_np = ImageProcessor.equalize_histogram(img1_np)
             img2_np = ImageProcessor.equalize_histogram(img2_np)
         
+        logger.info(f"Images loaded successfully with shape {img1_np.shape}")
         return img1_np, img2_np
     
     @staticmethod

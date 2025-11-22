@@ -2,6 +2,7 @@
 Main comparator module that orchestrates image comparison workflow.
 """
 
+import logging
 from pathlib import Path
 from typing import List, Dict, Any
 import json
@@ -10,6 +11,8 @@ from analyzers import AnalyzerRegistry
 from processor import ImageProcessor
 from report_generator import ReportGenerator
 from models import ComparisonResult
+
+logger = logging.getLogger("ImageComparison")
 
 
 class ImageComparator:
@@ -37,18 +40,18 @@ class ImageComparator:
             try:
                 shutil.rmtree(self.config.diff_path)
                 self.config.diff_path.mkdir(parents=True, exist_ok=True)
-                print("Cleaned diffs directory")
+                logger.debug("Cleaned diffs directory")
             except Exception as e:
-                print(f"Warning: Could not clean diffs directory: {e}")
+                logger.warning(f"Could not clean diffs directory: {e}")
         
         # Clean reports directory
         if self.config.html_path.exists():
             try:
                 shutil.rmtree(self.config.html_path)
                 self.config.html_path.mkdir(parents=True, exist_ok=True)
-                print("Cleaned reports directory")
+                logger.debug("Cleaned reports directory")
             except Exception as e:
-                print(f"Warning: Could not clean reports directory: {e}")
+                logger.warning(f"Could not clean reports directory: {e}")
     
     def compare_all(self) -> List[ComparisonResult]:
         """
@@ -64,37 +67,37 @@ class ImageComparator:
         new_images = self._find_images(self.config.new_path)
         
         if not new_images:
-            print("No images found in new directory")
+            logger.error("No images found in new directory")
             return []
         
         results = []
         total = len(new_images)
         
-        print(f"Found {total} images to compare\n")
+        logger.info(f"Found {total} images to compare")
         
         for idx, new_img_path in enumerate(new_images, 1):
-            print(f"[{idx}/{total}] Processing: {new_img_path.name}")
+            logger.info(f"[{idx}/{total}] Processing: {new_img_path.name}")
             
             # Find corresponding known good image
             known_good_path = self.config.known_good_path / new_img_path.name
             
             if not known_good_path.exists():
-                print(f"  ! Warning: No matching known good image found")
+                logger.warning(f"No matching known good image found for {new_img_path.name}")
                 continue
             
             try:
                 result = self._compare_single_pair(new_img_path, known_good_path)
                 results.append(result)
-                print(f"  + Difference: {result.percent_different:.2f}%")
+                logger.debug(f"Difference for {new_img_path.name}: {result.percent_different:.2f}%")
             except Exception as e:
-                print(f"  - Error: {str(e)}")
+                logger.error(f"Error processing {new_img_path.name}: {str(e)}", exc_info=True)
                 continue
         
         # Sort by percent difference (descending)
         results.sort(key=lambda x: x.percent_different, reverse=True)
         
         # Generate reports
-        print("\nGenerating reports...")
+        logger.info("Generating reports...")
         self._generate_reports(results)
         
         return results
@@ -172,7 +175,7 @@ class ImageComparator:
     
     def _generate_reports(self, results: List[ComparisonResult]):
         """Generate HTML reports for all results."""
-        print("\nGenerating reports...")
+        logger.info("Generating reports...")
         
         # Generate individual reports with full results list for navigation
         for result in results:
@@ -186,6 +189,6 @@ class ImageComparator:
         try:
             with open(json_path, 'w') as f:
                 json.dump([r.to_dict() for r in results], f, indent=2)
-            print(f"  + Saved results JSON: results.json")
+            logger.info("Saved results JSON: results.json")
         except Exception as e:
-            print(f"  - Error saving JSON results: {e}")
+            logger.error(f"Error saving JSON results: {e}", exc_info=True)
