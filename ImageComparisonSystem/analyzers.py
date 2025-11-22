@@ -5,7 +5,7 @@ Each analyzer extracts specific metrics from image comparisons.
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 import numpy as np
 from PIL import Image
 from skimage.metrics import structural_similarity as ssim
@@ -40,12 +40,14 @@ class ImageAnalyzer(ABC):
 class PixelDifferenceAnalyzer(ImageAnalyzer):
     """Analyzes pixel-level differences between images."""
     
-    def __init__(self, threshold: int = 1):
+    def __init__(self, threshold: int = 1) -> None:
         """
+        Initialize pixel difference analyzer.
+        
         Args:
             threshold: Minimum pixel value change to count as different
         """
-        self.threshold = threshold
+        self.threshold: int = threshold
     
     @property
     def name(self) -> str:
@@ -246,12 +248,18 @@ class HistogramAnalyzer(ImageAnalyzer):
 class AnalyzerRegistry:
     """Registry for managing image analyzers."""
     
-    def __init__(self, config=None):
-        self.analyzers: list[ImageAnalyzer] = []
-        self.config = config
+    def __init__(self, config: Optional['Config'] = None) -> None:
+        """
+        Initialize analyzer registry.
+        
+        Args:
+            config: Optional configuration object
+        """
+        self.analyzers: List[ImageAnalyzer] = []
+        self.config: Optional['Config'] = config
         self._register_default_analyzers()
     
-    def _register_default_analyzers(self):
+    def _register_default_analyzers(self) -> None:
         """Register default set of analyzers."""
         self.register(DimensionAnalyzer())
         self.register(HistogramAnalyzer())
@@ -269,16 +277,31 @@ class AnalyzerRegistry:
         
         self.register(StructuralSimilarityAnalyzer())
     
-    def register(self, analyzer: ImageAnalyzer):
-        """Add an analyzer to the registry."""
+    def register(self, analyzer: ImageAnalyzer) -> None:
+        """
+        Add an analyzer to the registry.
+        
+        Args:
+            analyzer: Analyzer instance to register
+        """
         self.analyzers.append(analyzer)
     
     def analyze_all(self, img1: np.ndarray, img2: np.ndarray) -> Dict[str, Dict[str, Any]]:
-        """Run all registered analyzers on the image pair."""
-        results = {}
+        """
+        Run all registered analyzers on the image pair.
+        
+        Args:
+            img1: First image array
+            img2: Second image array
+            
+        Returns:
+            Dictionary mapping analyzer names to their results
+        """
+        results: Dict[str, Dict[str, Any]] = {}
         for analyzer in self.analyzers:
             try:
                 results[analyzer.name] = analyzer.analyze(img1, img2)
             except Exception as e:
+                logger.error(f"Error in {analyzer.name}: {e}", exc_info=True)
                 results[analyzer.name] = {'error': str(e)}
         return results

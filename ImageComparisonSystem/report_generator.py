@@ -1,10 +1,13 @@
 """
 HTML report generation for image comparison results.
+
+Provides functionality to generate detailed HTML reports for individual
+image comparisons and summary pages showing all results.
 """
 
 import logging
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 from config import Config
 from models import ComparisonResult
 
@@ -12,43 +15,61 @@ logger = logging.getLogger("ImageComparison")
 
 
 class ReportGenerator:
-    """Generates HTML reports for comparison results."""
+    """Generates HTML reports for comparison results.
     
-    def __init__(self, config: Config):
-        self.config = config
+    Creates detailed HTML reports for each image comparison and a summary
+    page with navigation and statistics.
+    """
     
-    def generate_detail_report(self, result: ComparisonResult, results: List[ComparisonResult] = None):
-        """Generate detailed HTML report for a single comparison."""
-        output_path = self.config.html_path / f"{result.filename}.html"
+    def __init__(self, config: Config) -> None:
+        """Initialize report generator.
+        
+        Args:
+            config: Configuration object with output paths
+        """
+        self.config: Config = config
+    
+    def generate_detail_report(self, result: ComparisonResult, 
+                              results: Optional[List[ComparisonResult]] = None) -> None:
+        """Generate detailed HTML report for a single comparison.
+        
+        Creates an HTML file with comparison details including side-by-side
+        images, diff visualization, metrics, and navigation links.
+        
+        Args:
+            result: Comparison result to generate report for
+            results: Optional list of all results for navigation links
+        """
+        output_path: Path = self.config.html_path / f"{result.filename}.html"
         
         try:
             # Get relative paths for images
-            new_img_rel = self._get_relative_path(result.new_image_path)
-            known_good_rel = self._get_relative_path(result.known_good_path)
-            diff_rel = self._get_relative_path(result.diff_image_path)
-            annotated_rel = self._get_relative_path(result.annotated_image_path)
+            new_img_rel: str = self._get_relative_path(result.new_image_path)
+            known_good_rel: str = self._get_relative_path(result.known_good_path)
+            diff_rel: str = self._get_relative_path(result.diff_image_path)
+            annotated_rel: str = self._get_relative_path(result.annotated_image_path)
             
             # Generate navigation links
-            prev_link = ''
-            next_link = ''
+            prev_link: str = ''
+            next_link: str = ''
             if results and len(results) > 1:
                 # Find current result index
                 try:
-                    current_idx = next(i for i, r in enumerate(results) if r.filename == result.filename)
+                    current_idx: int = next(i for i, r in enumerate(results) if r.filename == result.filename)
                     
                     # Previous link
                     if current_idx > 0:
-                        prev_result = results[current_idx - 1]
+                        prev_result: ComparisonResult = results[current_idx - 1]
                         prev_link = f'<a href="{prev_result.filename}.html" class="btn">← Previous</a>'
                     
                     # Next link
                     if current_idx < len(results) - 1:
-                        next_result = results[current_idx + 1]
+                        next_result: ComparisonResult = results[current_idx + 1]
                         next_link = f'<a href="{next_result.filename}.html" class="btn">Next →</a>'
                 except StopIteration:
                     pass
             
-            html = self._get_html_template()
+            html: str = self._get_html_template()
             html = html.replace('{{TITLE}}', f"Comparison: {result.filename}")
             html = html.replace('{{FILENAME}}', result.filename)
             html = html.replace('{{PERCENT_DIFF}}', f"{result.percent_different:.4f}")

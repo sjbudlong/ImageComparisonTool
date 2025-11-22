@@ -7,7 +7,7 @@ import logging
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple, Any
 from config import Config
 
 logger = logging.getLogger("ImageComparison")
@@ -16,7 +16,7 @@ logger = logging.getLogger("ImageComparison")
 class ComparisonUI:
     """GUI for configuring image comparison settings."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         logger.debug("Initializing ComparisonUI")
         self.config: Optional[Config] = None
         self.root = tk.Tk()
@@ -249,16 +249,17 @@ class ComparisonUI:
             if len(parts) == 3 and all(0 <= p <= 255 for p in parts):
                 hex_color = f'#{parts[0]:02x}{parts[1]:02x}{parts[2]:02x}'
                 self.color_preview.configure(bg=hex_color)
-        except:
+        except (ValueError, AttributeError):
+            logger.debug(f"Invalid color format provided: {color_str}")
             pass
     
-    def _browse_base_dir(self):
+    def _browse_base_dir(self) -> None:
         """Open directory browser for base directory."""
         directory = filedialog.askdirectory(title="Select Base Directory")
         if directory:
             self.base_dir_var.set(directory)
     
-    def _on_start(self):
+    def _on_start(self) -> None:
         """Validate inputs and create config."""
         logger.debug("Starting comparison from UI")
         try:
@@ -281,18 +282,18 @@ class ComparisonUI:
                 return
             
             # Create config
-            pixel_diff_threshold = float(self.pixel_diff_threshold_var.get())
-            pixel_change_threshold = int(self.pixel_change_threshold_var.get())
-            ssim_threshold = float(self.ssim_threshold_var.get())
-            color_distance = float(self.color_distance_var.get())
-            min_contour = int(self.min_contour_var.get())
-            diff_enhancement = float(self.diff_enhancement_var.get())
+            pixel_diff_threshold: float = float(self.pixel_diff_threshold_var.get())
+            pixel_change_threshold: int = int(self.pixel_change_threshold_var.get())
+            ssim_threshold: float = float(self.ssim_threshold_var.get())
+            color_distance: float = float(self.color_distance_var.get())
+            min_contour: int = int(self.min_contour_var.get())
+            diff_enhancement: float = float(self.diff_enhancement_var.get())
             
             # Parse highlight color
-            color_parts = [int(x.strip()) for x in self.highlight_color_var.get().split(',')]
+            color_parts: list = [int(x.strip()) for x in self.highlight_color_var.get().split(',')]
             if len(color_parts) != 3 or not all(0 <= p <= 255 for p in color_parts):
                 raise ValueError("Invalid color format")
-            highlight_color = tuple(color_parts)
+            highlight_color: Tuple[int, int, int] = tuple(color_parts)
             
             self.config = Config(
                 base_dir=Path(self.base_dir_var.get()),
