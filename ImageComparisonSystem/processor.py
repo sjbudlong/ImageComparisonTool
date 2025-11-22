@@ -20,8 +20,10 @@ logger = logging.getLogger("ImageComparison")
 class ImageProcessor:
     """Handles image diff generation and visualization."""
     
-    def __init__(self, config=None):
+    def __init__(self, config: Optional['Config'] = None) -> None:
         """
+        Initialize image processor.
+        
         Args:
             config: Configuration object with processing settings
         """
@@ -45,7 +47,7 @@ class ImageProcessor:
             result = np.zeros_like(img)
             for i in range(img.shape[2]):
                 result[:, :, i] = cv2.equalizeHist(img[:, :, i])
-        logger.debug("Histogram equalization complete")
+            logger.debug("Histogram equalization complete")
             return result
         else:
             # Grayscale
@@ -211,7 +213,7 @@ class ImageProcessor:
     def create_annotated_image(img: np.ndarray, diff: np.ndarray, 
                               threshold: float = 10.0,
                               min_area: int = 50,
-                              color: tuple = (255, 0, 0)) -> np.ndarray:
+                              color: Tuple[int, int, int] = (255, 0, 0)) -> np.ndarray:
         """
         Create annotated image with bounding boxes around differences.
         

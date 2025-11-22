@@ -4,7 +4,7 @@ Main comparator module that orchestrates image comparison workflow.
 
 import logging
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Set
 import json
 from config import Config
 from analyzers import AnalyzerRegistry
@@ -19,19 +19,25 @@ class ImageComparator:
     """Orchestrates the image comparison process."""
     
     # Supported image extensions
-    IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.gif'}
+    IMAGE_EXTENSIONS: Set[str] = {'.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.gif'}
     
-    def __init__(self, config: Config):
-        self.config = config
-        self.analyzer_registry = AnalyzerRegistry(config)
-        self.processor = ImageProcessor(config)
-        self.report_generator = ReportGenerator(config)
+    def __init__(self, config: Config) -> None:
+        """
+        Initialize image comparator.
+        
+        Args:
+            config: Configuration object
+        """
+        self.config: Config = config
+        self.analyzer_registry: AnalyzerRegistry = AnalyzerRegistry(config)
+        self.processor: ImageProcessor = ImageProcessor(config)
+        self.report_generator: ReportGenerator = ReportGenerator(config)
         
         # Ensure output directories exist
         self.config.diff_path.mkdir(parents=True, exist_ok=True)
         self.config.html_path.mkdir(parents=True, exist_ok=True)
     
-    def _clean_output_directories(self):
+    def _clean_output_directories(self) -> None:
         """Clean reports and diffs folders before running comparison."""
         import shutil
         
