@@ -269,9 +269,96 @@ All changes maintain backward compatibility:
 - Image discovery is additive (flat directories still work alongside nested ones)
 - API signatures backward-compatible (new parameters have defaults)
 
+## 7. Configurable Histogram Visualization
+
+### Overview
+Histogram visualization settings are now fully configurable through both the GUI and configuration classes, allowing users to customize the appearance and data representation of histogram comparisons without modifying code.
+
+### Changes Made
+- **File**: `ImageComparisonSystem/config.py`
+  - Created new `HistogramConfig` dataclass with the following settings:
+    - **Data Representation**: `bins` (64-512, default 256) - controls histogram detail level
+    - **Visual Layout**: `figure_width`, `figure_height` (defaults 16×6), `dpi` (default 100)
+    - **Line Styling**: 
+      - `grayscale_alpha`, `rgb_alpha` (0-1, default 0.7) - line transparency
+      - `grayscale_linewidth`, `rgb_linewidth` (defaults 2.0, 1.5) - line widths
+      - `grid_alpha` (default 0.3) - grid transparency
+    - **Title & Labels**: `title` - customizable histogram title
+    - **Colors**: `grayscale_color`, `rgb_colors` - support named colors or hex values
+    - **Feature Toggles**: `show_grayscale`, `show_rgb` - enable/disable histogram components
+  
+  - Added `histogram_config: HistogramConfig` field to `Config` class
+  - Automatically initializes with defaults in `__post_init__()` if not provided
+
+- **File**: `ImageComparisonSystem/processor.py`
+  - Updated `generate_histogram_image()` method signature to accept optional `hist_config` parameter
+  - Modified histogram generation to use config values instead of hard-coded constants
+  - Maintains backward compatibility with default `HistogramConfig` when no config provided
+  - Added TYPE_CHECKING import for circular dependency avoidance
+
+- **File**: `ImageComparisonSystem/comparator.py`
+  - Updated `_compare_single_pair()` to pass `self.config.histogram_config` to histogram generation
+
+- **File**: `ImageComparisonSystem/ui.py`
+  - Added new "Histogram Visualization" GUI section with controls for:
+    - Histogram bins (input field, 64-512 range)
+    - Figure width/height in inches
+    - Grayscale and RGB transparency sliders
+    - Grayscale and RGB line width inputs
+    - Checkboxes to toggle grayscale and RGB histograms
+  
+  - Updated `_on_start()` to create `HistogramConfig` from GUI inputs
+  - Passes config to `Config` constructor
+  - Added import for `HistogramConfig`
+
+### Example Usage (Programmatic)
+```python
+from config import Config, HistogramConfig
+
+# Create custom histogram config
+hist_config = HistogramConfig(
+    bins=128,              # Fewer bins for smoother visualization
+    figure_width=20,       # Larger output
+    figure_height=8,
+    grayscale_alpha=0.9,   # More opaque lines
+    rgb_alpha=0.8,
+    show_grayscale=True,
+    show_rgb=True
+)
+
+# Use with config
+config = Config(
+    base_dir='/path/to/images',
+    new_dir='new',
+    known_good_dir='known_good',
+    histogram_config=hist_config
+)
+```
+
+### Example Usage (GUI)
+Users can now configure histograms directly in the GUI without command line or code:
+1. Launch the GUI: `python -m ImageComparisonSystem.ui`
+2. Scroll to "Histogram Visualization" section
+3. Adjust bins, figure size, alpha values, line widths
+4. Check/uncheck to show/hide grayscale or RGB histograms
+5. Click "Start Comparison" - custom settings are applied to all reports
+
+### High-Impact Parameters
+Users most commonly adjust:
+- **Bins**: 64 (smooth, coarse), 256 (balanced, default), 512 (detailed, CPU-intensive)
+- **Figure Size**: Adjust for better visibility or to fit in reports
+- **Transparency**: Increase alpha (0.9) for clearer lines, decrease (0.5) for subtle background
+
+### Backward Compatibility
+- All histogram config parameters have sensible defaults
+- Code calling `generate_histogram_image()` without config continues to work
+- Default config matches previous hard-coded values
+- No API breaking changes
+
 ## Future Considerations
 
 - Add configuration UI/CLI options for equalization parameters
 - Consider interactive histogram with comparison overlay
 - Add more advanced color normalization options
 - Performance optimization for very large nested directory structures
+- Export histogram configuration templates for reproducible reports

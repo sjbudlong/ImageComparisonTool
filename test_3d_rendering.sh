@@ -1,6 +1,7 @@
 #!/bin/bash
 # Test: 3D Rendering Mode Comparison
 # This demonstrates comparison with histogram equalization for 3D renders
+# Larger figure size and higher transparency for detailed visualization
 
 cd "$(dirname "$0")"
 cd ImageComparisonSystem
@@ -13,4 +14,9 @@ python main.py \
   --color-distance-threshold 20.0 \
   --min-contour-area 100 \
   --highlight-color "0,0,255" \
+  --histogram-bins 256 \
+  --histogram-width 18 \
+  --histogram-height 7 \
+  --histogram-gray-alpha 0.85 \
+  --histogram-rgb-alpha 0.85 \
   --skip-dependency-check

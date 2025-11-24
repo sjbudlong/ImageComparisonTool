@@ -43,12 +43,23 @@ All notable changes to the Image Comparison Tool are documented here.
 - ISO-format timestamps for audit trails and build correlation
 - Machine-readable format for easy integration and parsing
 
+#### Configurable Histogram Visualization
+- Histogram settings now fully configurable via GUI and `HistogramConfig` class
+- **Data Representation**: Adjustable bins count (64-512, default 256) for detail control
+- **Visual Layout**: Customizable figure size and DPI for report formatting
+- **Line Styling**: Configurable transparency and line widths for both grayscale and RGB
+- **Feature Toggles**: Enable/disable grayscale and RGB histogram display
+- **GUI Integration**: New "Histogram Visualization" section in configuration UI
+- Users can adjust all settings without code modification
+- High-impact parameters: bins, figure dimensions, alpha/transparency, line widths
+
 ### Changed
 
-- **config.py**: Updated validation to check recursively for files
-- **processor.py**: Rewrote histogram equalization with advanced techniques
-- **processor.py**: Enhanced histogram visualization to 2×4 grid layout
-- **comparator.py**: Updated image matching logic for nested directories
+- **config.py**: Updated validation to check recursively for files; added `HistogramConfig` class
+- **processor.py**: Rewrote histogram equalization with advanced techniques; added config parameter to `generate_histogram_image()`
+- **processor.py**: Enhanced histogram visualization to 2×4 grid layout with configurable parameters
+- **comparator.py**: Updated image matching logic for nested directories; passes histogram config to processor
+- **ui.py**: Added "Histogram Visualization" section with controls for bins, figure size, alpha, line widths, toggles
 - **report_generator.py**: Added interactive descriptions, improved CSS/JS, delegates markdown export
 - **readme.md**: Updated feature list and added recent changes reference
 

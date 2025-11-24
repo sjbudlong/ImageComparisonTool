@@ -5,7 +5,7 @@ Unit tests for config module.
 import pytest
 import logging
 from pathlib import Path
-from config import Config
+from config import Config, HistogramConfig
 
 
 # Get logger for this module
@@ -156,3 +156,47 @@ class TestConfig:
         )
         assert config.base_dir.exists()
         logger.info("✓ Config base_dir creation test passed")
+    
+    def test_config_histogram_config_auto_initialization(self, temp_image_dir):
+        """Config should auto-initialize histogram_config with defaults."""
+        logger.debug("Testing Config auto-initialization of histogram_config")
+        config = Config(
+            base_dir=temp_image_dir,
+            new_dir="new",
+            known_good_dir="known_good"
+        )
+        
+        assert config.histogram_config is not None
+        assert isinstance(config.histogram_config, HistogramConfig)
+        assert config.histogram_config.bins == 256
+        assert config.histogram_config.figure_width == 16
+        assert config.histogram_config.show_grayscale is True
+        assert config.histogram_config.show_rgb is True
+        
+        logger.info("✓ Config histogram_config auto-initialization test passed")
+    
+    def test_config_histogram_config_custom(self, temp_image_dir):
+        """Config should accept custom HistogramConfig."""
+        logger.debug("Testing Config with custom HistogramConfig")
+        hist_config = HistogramConfig(
+            bins=128,
+            figure_width=18,
+            figure_height=7,
+            show_grayscale=True,
+            show_rgb=False
+        )
+        
+        config = Config(
+            base_dir=temp_image_dir,
+            new_dir="new",
+            known_good_dir="known_good",
+            histogram_config=hist_config
+        )
+        
+        assert config.histogram_config.bins == 128
+        assert config.histogram_config.figure_width == 18
+        assert config.histogram_config.figure_height == 7
+        assert config.histogram_config.show_grayscale is True
+        assert config.histogram_config.show_rgb is False
+        
+        logger.info("✓ Config custom HistogramConfig test passed")

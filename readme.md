@@ -305,15 +305,60 @@ When comparing rendered 3D spaces, lighting and tonal variations can cause false
 - Enable in CLI: Add `--use-histogram-eq` flag
 - Disable in CLI: Add `--no-histogram-eq` flag (default: enabled)
 
+### Configurable Histogram Visualization
+
+The histogram display in report pages is fully configurable, allowing you to adjust appearance and data representation without code changes.
+
+**Available Settings:**
+- **Bins**: 64 (smooth) to 512 (detailed, default 256)
+- **Figure Size**: Width and height in inches
+- **Transparency**: Grayscale and RGB line alpha (0-1 scale)
+- **Line Width**: Thickness of histogram lines
+- **Color Control**: Customize colors for grayscale and RGB channels
+- **Display Toggles**: Show/hide grayscale and RGB histograms independently
+
+**Configuration Methods:**
+
+*Via GUI (Recommended):*
+1. Run: `python -m ImageComparisonSystem.ui`
+2. Scroll to "Histogram Visualization" section
+3. Adjust desired parameters (bins, size, transparency, line width)
+4. Check/uncheck to show/hide histogram types
+5. Click "Start Comparison" - settings applied to all reports
+
+*Via Configuration File (Programmatic):*
+```python
+from config import Config, HistogramConfig
+
+# Create custom histogram config
+hist_config = HistogramConfig(
+    bins=128,                    # Smooth visualization
+    figure_width=18,
+    figure_height=7,
+    grayscale_alpha=0.9,        # More opaque lines
+    rgb_alpha=0.85,
+    show_grayscale=True,
+    show_rgb=True
+)
+
+# Use with config
+config = Config(
+    base_dir='/path/to/images',
+    new_dir='new',
+    known_good_dir='known_good',
+    histogram_config=hist_config
+)
+```
+
 ## Modular Architecture
 
 ### Core Components
 
 - **main.py**: Entry point and argument parsing
-- **config.py**: Configuration management
-- **ui.py**: GUI interface using tkinter
+- **config.py**: Configuration management with `Config` and `HistogramConfig` classes
+- **ui.py**: GUI interface using tkinter with full histogram visualization controls
 - **comparator.py**: Orchestrates the comparison workflow
-- **processor.py**: Image loading and diff generation
+- **processor.py**: Image loading and diff generation with configurable histogram visualization
 - **analyzers.py**: Modular analysis components
 - **report_generator.py**: HTML report creation
 
