@@ -69,12 +69,18 @@ class ImageComparator:
         # Clean output directories before starting
         self._clean_output_directories()
         
-        # Find all images in new directory
+        # Find all images in new directory (recursive)
         new_images = self._find_images(self.config.new_path)
-        
+
         if not new_images:
             logger.error("No images found in new directory")
             return []
+
+        # Build a lookup of known-good images (filename -> list of paths)
+        known_images = self._find_images(self.config.known_good_path)
+        known_index: Dict[str, List[Path]] = {}
+        for kp in known_images:
+            known_index.setdefault(kp.name, []).append(kp)
         
         results = []
         total = len(new_images)
@@ -84,12 +90,36 @@ class ImageComparator:
         for idx, new_img_path in enumerate(new_images, 1):
             logger.info(f"[{idx}/{total}] Processing: {new_img_path.name}")
             
-            # Find corresponding known good image
-            known_good_path = self.config.known_good_path / new_img_path.name
-            
-            if not known_good_path.exists():
-                logger.warning(f"No matching known good image found for {new_img_path.name}")
-                continue
+            # Attempt to find corresponding known good image.
+            # First try to match by relative subpath (preserve directory structure).
+            try:
+                rel = new_img_path.relative_to(self.config.new_path)
+            except Exception:
+                rel = Path(new_img_path.name)
+
+            candidate = self.config.known_good_path / rel
+
+            if candidate.exists() and candidate.is_file():
+                known_good_path = candidate
+            else:
+                # Fallback: lookup by filename anywhere under known_good tree
+                matches = known_index.get(new_img_path.name, [])
+                if matches:
+                    # If multiple matches exist, prefer one with the same relative parent name
+                    if len(matches) == 1:
+                        known_good_path = matches[0]
+                    else:
+                        # Try to find the best candidate: same relative parent directory
+                        chosen = None
+                        new_parent = rel.parent.name if rel.parent != Path('.') else None
+                        for m in matches:
+                            if new_parent and m.parent.name == new_parent:
+                                chosen = m
+                                break
+                        known_good_path = chosen or matches[0]
+                else:
+                    logger.warning(f"No matching known good image found for {new_img_path.name}")
+                    continue
             
             try:
                 result = self._compare_single_pair(new_img_path, known_good_path)
@@ -111,9 +141,20 @@ class ImageComparator:
     def _find_images(self, directory: Path) -> List[Path]:
         """Find all image files in a directory."""
         images = set()  # Use set to avoid duplicates
+        if not directory.exists():
+            return []
+
         for ext in self.IMAGE_EXTENSIONS:
-            images.update(directory.glob(f"*{ext}"))
-            images.update(directory.glob(f"*{ext.upper()}"))
+            # Use rglob for recursive search
+            try:
+                images.update(directory.rglob(f"*{ext}"))
+                images.update(directory.rglob(f"*{ext.upper()}"))
+            except Exception:
+                # In case directory is not readable or rglob fails for any reason
+                continue
+
+        # Filter only files
+        images = {p for p in images if p.is_file()}
         return sorted(list(images))
     
     def _compare_single_pair(self, new_path: Path, 
@@ -132,7 +173,9 @@ class ImageComparator:
         img_new, img_known = self.processor.load_images(
             new_path, 
             known_good_path,
-            equalize=self.config.use_histogram_equalization
+            equalize=self.config.use_histogram_equalization,
+            use_clahe=self.config.use_clahe,
+            to_grayscale=self.config.equalize_to_grayscale
         )
         
         # Generate histogram visualization (using original images, not equalized)
@@ -150,12 +193,19 @@ class ImageComparator:
         percent_diff = metrics.get('Pixel Difference', {}).get('percent_different', 0)
         
         # Generate diff images
+        # Create unenhanced diff for annotation target
+        diff_img_unenhanced = self.processor.create_diff_image(
+            img_known, img_new, 
+            enhancement_factor=1.0
+        )
+        # Create enhanced diff for visualization
         diff_img = self.processor.create_diff_image(
             img_known, img_new, 
             enhancement_factor=self.config.diff_enhancement_factor
         )
+        # Use unenhanced diff as annotation target
         annotated_img = self.processor.create_annotated_image(
-            img_new, diff_img, 
+            diff_img_unenhanced, diff_img_unenhanced, 
             threshold=10.0,
             min_area=self.config.min_contour_area,
             color=self.config.highlight_color
