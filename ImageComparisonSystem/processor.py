@@ -31,32 +31,69 @@ class ImageProcessor:
         logger.debug("ImageProcessor initialized")
     
     @staticmethod
-    def equalize_histogram(img: np.ndarray) -> np.ndarray:
+    def equalize_histogram(img: np.ndarray, use_clahe: bool = True, 
+                          to_grayscale: bool = False) -> np.ndarray:
         """
         Apply histogram equalization to normalize tonal variations.
         
+        Uses CLAHE (Contrast Limited Adaptive Histogram Equalization) which is
+        less aggressive than standard histogram equalization and preserves 
+        local contrast better.
+        
         Args:
             img: Input image array
+            use_clahe: If True, use CLAHE instead of standard equalization
+            to_grayscale: If True, convert to grayscale before equalization
             
         Returns:
             Histogram equalized image
         """
         logger.debug(f"Applying histogram equalization to image shape {img.shape}")
-        if len(img.shape) == 3:
-            # Color image - equalize each channel
-            result = np.zeros_like(img)
-            for i in range(img.shape[2]):
-                result[:, :, i] = cv2.equalizeHist(img[:, :, i])
-            logger.debug("Histogram equalization complete")
+        
+        # Convert to grayscale if requested or if it's color and we want better tonal neutralization
+        if to_grayscale and len(img.shape) == 3:
+            # Convert BGR to grayscale
+            img_work = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+            is_grayscale = True
+        else:
+            img_work = img
+            is_grayscale = len(img.shape) == 2
+        
+        if is_grayscale:
+            # Grayscale - apply equalization directly
+            if use_clahe:
+                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+                result = clahe.apply(img_work.astype(np.uint8))
+            else:
+                result = cv2.equalizeHist(img_work.astype(np.uint8))
+            logger.debug("Histogram equalization complete (grayscale)")
             return result
         else:
-            # Grayscale
-            return cv2.equalizeHist(img)
+            # Color image - equalize in LAB color space (better for perceptual tonal normalization)
+            # Convert RGB to LAB
+            img_lab = cv2.cvtColor(img_work.astype(np.uint8), cv2.COLOR_RGB2LAB)
+            
+            # Equalize only the L (lightness) channel
+            l_channel = img_lab[:, :, 0]
+            if use_clahe:
+                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+                l_channel_eq = clahe.apply(l_channel)
+            else:
+                l_channel_eq = cv2.equalizeHist(l_channel)
+            
+            # Replace L channel with equalized version
+            img_lab[:, :, 0] = l_channel_eq
+            
+            # Convert back to RGB
+            result = cv2.cvtColor(img_lab, cv2.COLOR_LAB2RGB)
+            logger.debug("Histogram equalization complete (color in LAB space)")
+            return result
     
     @staticmethod
     def generate_histogram_image(img1: np.ndarray, img2: np.ndarray) -> str:
         """
         Generate a histogram comparison image as base64 encoded PNG.
+        Shows both grayscale (luminance) and RGB channel histograms for comparison.
         
         Args:
             img1: First image
@@ -65,46 +102,56 @@ class ImageProcessor:
         Returns:
             Base64 encoded PNG image
         """
-        fig, axes = plt.subplots(2, 3, figsize=(12, 6))
-        fig.suptitle('Histogram Comparison', fontsize=14, fontweight='bold')
+        fig, axes = plt.subplots(2, 4, figsize=(16, 6))
+        fig.suptitle('Histogram Comparison - Grayscale & RGB Channels', fontsize=14, fontweight='bold')
         
+        # Convert to grayscale for luminance histograms
         if len(img1.shape) == 3:
-            # Color histograms
+            gray1 = cv2.cvtColor(img1.astype(np.uint8), cv2.COLOR_RGB2GRAY)
+            gray2 = cv2.cvtColor(img2.astype(np.uint8), cv2.COLOR_RGB2GRAY)
+        else:
+            gray1 = img1.astype(np.uint8)
+            gray2 = img2.astype(np.uint8)
+        
+        # Plot grayscale histograms in column 0
+        hist_gray1, bins = np.histogram(gray1, bins=256, range=(0, 256))
+        axes[0, 0].plot(bins[:-1], hist_gray1, color='black', alpha=0.7, linewidth=2)
+        axes[0, 0].set_title('Grayscale (Known Good)', fontweight='bold')
+        axes[0, 0].set_xlim([0, 255])
+        axes[0, 0].grid(True, alpha=0.3)
+        axes[0, 0].legend(['Luminance'], loc='upper right')
+        
+        hist_gray2, _ = np.histogram(gray2, bins=256, range=(0, 256))
+        axes[1, 0].plot(bins[:-1], hist_gray2, color='black', alpha=0.7, linewidth=2)
+        axes[1, 0].set_title('Grayscale (New Image)', fontweight='bold')
+        axes[1, 0].set_xlim([0, 255])
+        axes[1, 0].grid(True, alpha=0.3)
+        axes[1, 0].legend(['Luminance'], loc='upper right')
+        
+        # Plot RGB channel histograms in columns 1-3
+        if len(img1.shape) == 3:
             colors = ['red', 'green', 'blue']
             for i, color in enumerate(colors):
+                col = i + 1
+                
                 # Image 1 histograms
                 hist1, bins = np.histogram(img1[:, :, i], bins=256, range=(0, 256))
-                axes[0, i].plot(bins[:-1], hist1, color=color, alpha=0.7, label='Known Good')
-                axes[0, i].set_title(f'{color.capitalize()} Channel')
-                axes[0, i].set_xlim([0, 255])
-                axes[0, i].grid(True, alpha=0.3)
+                axes[0, col].plot(bins[:-1], hist1, color=color, alpha=0.7, linewidth=1.5)
+                axes[0, col].set_title(f'{color.capitalize()} Channel (Known Good)', fontweight='bold')
+                axes[0, col].set_xlim([0, 255])
+                axes[0, col].grid(True, alpha=0.3)
+                axes[0, col].legend([color.capitalize()], loc='upper right')
                 
                 # Image 2 histograms
                 hist2, _ = np.histogram(img2[:, :, i], bins=256, range=(0, 256))
-                axes[1, i].plot(bins[:-1], hist2, color=color, alpha=0.7, label='New Image')
-                axes[1, i].set_xlim([0, 255])
-                axes[1, i].grid(True, alpha=0.3)
-                
-                # Add legend
-                if i == 0:
-                    axes[0, i].legend(loc='upper right')
-                    axes[1, i].legend(loc='upper right')
+                axes[1, col].plot(bins[:-1], hist2, color=color, alpha=0.7, linewidth=1.5)
+                axes[1, col].set_title(f'{color.capitalize()} Channel (New Image)', fontweight='bold')
+                axes[1, col].set_xlim([0, 255])
+                axes[1, col].grid(True, alpha=0.3)
+                axes[1, col].legend([color.capitalize()], loc='upper right')
         else:
-            # Grayscale histogram
-            hist1, bins = np.histogram(img1, bins=256, range=(0, 256))
-            axes[0, 0].plot(bins[:-1], hist1, color='black', alpha=0.7)
-            axes[0, 0].set_title('Known Good')
-            axes[0, 0].set_xlim([0, 255])
-            axes[0, 0].grid(True, alpha=0.3)
-            
-            hist2, _ = np.histogram(img2, bins=256, range=(0, 256))
-            axes[1, 0].plot(bins[:-1], hist2, color='black', alpha=0.7)
-            axes[1, 0].set_title('New Image')
-            axes[1, 0].set_xlim([0, 255])
-            axes[1, 0].grid(True, alpha=0.3)
-            
-            # Hide unused subplots
-            for i in range(1, 3):
+            # Hide RGB columns for grayscale images
+            for i in range(1, 4):
                 axes[0, i].axis('off')
                 axes[1, i].axis('off')
         
@@ -121,7 +168,9 @@ class ImageProcessor:
     
     @staticmethod
     def load_images(path1: Path, path2: Path, 
-                   equalize: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+                   equalize: bool = False,
+                   use_clahe: bool = True,
+                   to_grayscale: bool = False) -> Tuple[np.ndarray, np.ndarray]:
         """
         Load two images and ensure they're the same size.
         
@@ -129,6 +178,8 @@ class ImageProcessor:
             path1: Path to first image
             path2: Path to second image
             equalize: Whether to apply histogram equalization
+            use_clahe: Whether to use CLAHE instead of standard equalization
+            to_grayscale: Whether to convert to grayscale before equalization
             
         Returns:
             Tuple of numpy arrays (img1, img2)
@@ -160,8 +211,8 @@ class ImageProcessor:
         # Apply histogram equalization if requested
         if equalize:
             logger.debug("Applying histogram equalization")
-            img1_np = ImageProcessor.equalize_histogram(img1_np)
-            img2_np = ImageProcessor.equalize_histogram(img2_np)
+            img1_np = ImageProcessor.equalize_histogram(img1_np, use_clahe=use_clahe, to_grayscale=to_grayscale)
+            img2_np = ImageProcessor.equalize_histogram(img2_np, use_clahe=use_clahe, to_grayscale=to_grayscale)
         
         logger.info(f"Images loaded successfully with shape {img1_np.shape}")
         return img1_np, img2_np

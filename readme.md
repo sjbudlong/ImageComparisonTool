@@ -6,10 +6,24 @@
 
 A modular Python system for comparing images and generating detailed HTML reports with visual diffs. Perfect for 3D rendering validation, visual regression testing, and quality assurance workflows.
 
+## 🚀 Recent Enhancements (November 2025)
+
+See [RECENT_CHANGES.md](RECENT_CHANGES.md) for detailed information about:
+- ✨ **Recursive image discovery** - Compare images organized in nested subdirectories
+- ✨ **Interactive metric descriptions** - Click ? icon to learn about metrics
+- ✨ **Advanced histogram equalization** - CLAHE and LAB color space processing
+- ✨ **Grayscale histogram visualization** - See both luminance and RGB distributions
+- ✨ **Enhanced diff annotations** - Unenhanced diff as annotation target
+
 ## 🎯 Key Features
 
 - **Automated Image Comparison**: Compare two sets of images and identify differences
-- **3D Space Optimization**: Histogram equalization to normalize tonal variations while highlighting structural differences
+  - **Recursive directory search**: Automatically finds images in nested subfolders
+  - **Smart image matching**: Preserves directory structure with fallback filename matching
+- **3D Space Optimization**: Advanced histogram equalization to normalize tonal variations while highlighting structural differences
+  - CLAHE (Contrast Limited Adaptive Histogram Equalization)
+  - LAB color space processing
+  - Optional grayscale mode for maximum tonal normalization
 - **Multiple Analysis Metrics**:
   - Pixel-level differences (percentage and count)
   - Structural Similarity Index (SSIM)
@@ -18,13 +32,14 @@ A modular Python system for comparing images and generating detailed HTML report
   - Histogram correlation and comparison
 - **Visual Diff Generation**:
   - Adjustable contrast enhancement for difference images
-  - Annotated images with customizable colored bounding boxes
+  - Annotated images with bounding boxes showing difference areas
   - Configurable minimum contour area for noise reduction
 - **Interactive HTML Reports**:
   - Click images to view full-size overlays with close button
-  - Embedded histogram comparisons for each image pair
+  - Embedded grayscale and RGB channel histograms
   - Summary page sorted by difference percentage
-  - Detailed metrics for each comparison
+  - Detailed metrics with interactive descriptions
+  - Click ? icon next to metric headers to learn more
 - **Flexible Configuration**:
   - GUI for easy setup with live color preview
   - Command-line interface for automation

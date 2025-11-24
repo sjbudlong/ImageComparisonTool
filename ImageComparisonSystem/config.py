@@ -44,6 +44,10 @@ class Config:
     # Histogram equalization
     use_histogram_equalization: bool = True
     """Whether to apply histogram equalization during processing."""
+    use_clahe: bool = True
+    """Whether to use CLAHE (Contrast Limited Adaptive Histogram Equalization) instead of standard equalization."""
+    equalize_to_grayscale: bool = False
+    """Whether to convert to grayscale before equalization for more aggressive tonal normalization."""
     
     # Visual settings
     highlight_color: Tuple[int, int, int] = (255, 0, 0)
@@ -114,12 +118,23 @@ class Config:
         
         if not self.known_good_path.exists():
             return False, f"Known good directory does not exist: {self.known_good_path}"
-        
-        if not any(self.new_path.iterdir()):
-            return False, f"New images directory is empty: {self.new_path}"
-        
-        if not any(self.known_good_path.iterdir()):
-            return False, f"Known good directory is empty: {self.known_good_path}"
+
+        # Ensure there is at least one file somewhere under the directories (recursive)
+        try:
+            has_new_files = any(p.is_file() for p in self.new_path.rglob('*'))
+        except Exception:
+            has_new_files = False
+
+        try:
+            has_known_files = any(p.is_file() for p in self.known_good_path.rglob('*'))
+        except Exception:
+            has_known_files = False
+
+        if not has_new_files:
+            return False, f"New images directory is empty (no files found): {self.new_path}"
+
+        if not has_known_files:
+            return False, f"Known good directory is empty (no files found): {self.known_good_path}"
         
         return True, ""
 

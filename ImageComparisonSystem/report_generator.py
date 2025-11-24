@@ -21,6 +21,24 @@ class ReportGenerator:
     page with navigation and statistics.
     """
     
+    # Metric descriptions for tooltips
+    METRIC_DESCRIPTIONS = {
+        'Pixel Difference': (
+            'Compares pixel-by-pixel differences between images. '
+            'Shows the percentage of pixels that differ and average RGB distance.'
+        ),
+        'Structural Similarity': (
+            'Measures structural similarity (SSIM) between images on a scale of 0-1. '
+            'Higher values indicate more similar images. '
+            'Accounts for luminance, contrast, and structure.'
+        ),
+        'Histogram Analysis': (
+            'Analyzes the distribution of color and brightness values. '
+            'Compares histograms for each color channel (RGB). '
+            'Useful for detecting lighting or contrast changes.'
+        ),
+    }
+    
     def __init__(self, config: Config) -> None:
         """Initialize report generator.
         
@@ -43,7 +61,7 @@ class ReportGenerator:
         output_path: Path = self.config.html_path / f"{result.filename}.html"
         
         try:
-            # Get relative paths for images
+            # Get relative paths for images (relative to the HTML output directory)
             new_img_rel: str = self._get_relative_path(result.new_image_path)
             known_good_rel: str = self._get_relative_path(result.known_good_path)
             diff_rel: str = self._get_relative_path(result.diff_image_path)
@@ -124,17 +142,35 @@ class ReportGenerator:
     def _get_relative_path(self, path: Path) -> str:
         """Get relative path from HTML directory to image."""
         try:
-            return str(path.relative_to(self.config.base_dir))
-        except ValueError:
+            # Compute path relative to the HTML output directory so links work
+            # regardless of where images are stored under the project.
+            from os import path as _opath
+            rel = _opath.relpath(str(path), start=str(self.config.html_path))
+            return rel.replace('\\', '/')
+        except Exception:
             return str(path)
     
     def _format_metrics(self, metrics: dict) -> str:
-        """Format metrics dictionary as HTML."""
+        """Format metrics dictionary as HTML with togglable descriptions."""
         html_parts = []
         
         for analyzer_name, analyzer_metrics in metrics.items():
+            # Generate unique ID for this metric group
+            group_id = analyzer_name.lower().replace(' ', '-')
+            description = self.METRIC_DESCRIPTIONS.get(analyzer_name, '')
+            
             html_parts.append(f'<div class="metric-group">')
+            html_parts.append(f'<div class="metric-header" onclick="toggleDescription(\'{group_id}\')">')
             html_parts.append(f'<h3>{analyzer_name}</h3>')
+            if description:
+                html_parts.append(f'<span class="metric-help-icon" title="Click to see description">?</span>')
+            html_parts.append('</div>')
+            
+            if description:
+                html_parts.append(f'<div class="metric-description" id="{group_id}-desc" style="display: none;">')
+                html_parts.append(f'<p>{description}</p>')
+                html_parts.append('</div>')
+            
             html_parts.append('<dl>')
             
             for key, value in analyzer_metrics.items():
@@ -275,11 +311,52 @@ class ReportGenerator:
         .metric-group {
             margin-bottom: 20px;
         }
-        .metric-group h3 {
+        .metric-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+        }
+        .metric-header h3 {
             color: #2c3e50;
-            margin-bottom: 10px;
+            margin-bottom: 0;
             padding-bottom: 5px;
             border-bottom: 2px solid #3498db;
+            flex: 1;
+        }
+        .metric-help-icon {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            margin-left: 10px;
+            background: #3498db;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        .metric-help-icon:hover {
+            background: #2980b9;
+            transform: scale(1.1);
+        }
+        .metric-description {
+            background: #ecf0f1;
+            border-left: 4px solid #3498db;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-size: 0.95em;
+            color: #555;
+            line-height: 1.5;
+        }
+        .metric-description p {
+            margin: 0;
         }
         dl {
             display: grid;
@@ -356,22 +433,22 @@ class ReportGenerator:
         <div class="image-grid">
             <div class="image-card">
                 <h2>Known Good</h2>
-                <img src="../{{KNOWN_GOOD_IMAGE}}" alt="Known Good" onclick="showOverlay(this.src)">
+                <img src="{{KNOWN_GOOD_IMAGE}}" alt="Known Good" onclick="showOverlay(this.src)">
             </div>
             
             <div class="image-card">
                 <h2>New Image</h2>
-                <img src="../{{NEW_IMAGE}}" alt="New" onclick="showOverlay(this.src)">
+                <img src="{{NEW_IMAGE}}" alt="New" onclick="showOverlay(this.src)">
             </div>
             
             <div class="image-card">
                 <h2>Difference (Enhanced)</h2>
-                <img src="../{{DIFF_IMAGE}}" alt="Diff" onclick="showOverlay(this.src)">
+                <img src="{{DIFF_IMAGE}}" alt="Diff" onclick="showOverlay(this.src)">
             </div>
             
             <div class="image-card">
                 <h2>Annotated Differences</h2>
-                <img src="../{{ANNOTATED_IMAGE}}" alt="Annotated" onclick="showOverlay(this.src)">
+                <img src="{{ANNOTATED_IMAGE}}" alt="Annotated" onclick="showOverlay(this.src)">
             </div>
         </div>
         
@@ -399,6 +476,17 @@ class ReportGenerator:
         
         function hideOverlay() {
             document.getElementById('overlay').classList.remove('active');
+        }
+        
+        function toggleDescription(groupId) {
+            const descElement = document.getElementById(groupId + '-desc');
+            if (descElement) {
+                if (descElement.style.display === 'none') {
+                    descElement.style.display = 'block';
+                } else {
+                    descElement.style.display = 'none';
+                }
+            }
         }
         
         document.addEventListener('keydown', function(e) {
