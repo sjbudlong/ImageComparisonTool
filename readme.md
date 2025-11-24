@@ -14,6 +14,7 @@ See [RECENT_CHANGES.md](RECENT_CHANGES.md) for detailed information about:
 - ✨ **Advanced histogram equalization** - CLAHE and LAB color space processing
 - ✨ **Grayscale histogram visualization** - See both luminance and RGB distributions
 - ✨ **Enhanced diff annotations** - Unenhanced diff as annotation target
+- ✨ **Markdown report exporter** - CI/CD pipeline integration (Azure DevOps, GitHub Actions)
 
 ## 🎯 Key Features
 
@@ -40,6 +41,11 @@ See [RECENT_CHANGES.md](RECENT_CHANGES.md) for detailed information about:
   - Summary page sorted by difference percentage
   - Detailed metrics with interactive descriptions
   - Click ? icon next to metric headers to learn more
+- **CI/CD Pipeline Integration**:
+  - Markdown summary reports (`summary.md`) for build pipelines
+  - Machine-readable format for Azure DevOps, GitHub Actions, Jenkins, etc.
+  - Comprehensive statistics and status categorization
+  - ISO-format timestamps for audit trails
 - **Flexible Configuration**:
   - GUI for easy setup with live color preview
   - Command-line interface for automation

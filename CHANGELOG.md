@@ -35,14 +35,28 @@ All notable changes to the Image Comparison Tool are documented here.
 - Clearer visibility of exact difference areas
 - More detail-preserving approach
 
+#### Markdown Report Exporter
+- New `MarkdownExporter` class for CI/CD pipeline integration
+- Generates `summary.md` alongside `summary.html`
+- Pipeline-agnostic markdown format suitable for Azure DevOps, GitHub Actions, etc.
+- Includes comprehensive statistics, difference metrics, and status tables
+- ISO-format timestamps for audit trails and build correlation
+- Machine-readable format for easy integration and parsing
+
 ### Changed
 
 - **config.py**: Updated validation to check recursively for files
 - **processor.py**: Rewrote histogram equalization with advanced techniques
 - **processor.py**: Enhanced histogram visualization to 2×4 grid layout
 - **comparator.py**: Updated image matching logic for nested directories
-- **report_generator.py**: Added interactive descriptions, improved CSS/JS
+- **report_generator.py**: Added interactive descriptions, improved CSS/JS, delegates markdown export
 - **readme.md**: Updated feature list and added recent changes reference
+
+### New Files
+
+- **markdown_exporter.py**: New module for markdown report generation
+  - Cleanly separated from HTML report generation
+  - Focused on CI/CD pipeline integration
 
 ### Fixed
 

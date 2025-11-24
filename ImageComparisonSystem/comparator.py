@@ -10,6 +10,7 @@ from config import Config
 from analyzers import AnalyzerRegistry
 from processor import ImageProcessor
 from report_generator import ReportGenerator
+from markdown_exporter import MarkdownExporter
 from models import ComparisonResult
 
 logger = logging.getLogger("ImageComparison")
@@ -230,15 +231,19 @@ class ImageComparator:
         )
     
     def _generate_reports(self, results: List[ComparisonResult]):
-        """Generate HTML reports for all results."""
+        """Generate HTML and markdown reports for all results."""
         logger.info("Generating reports...")
         
         # Generate individual reports with full results list for navigation
         for result in results:
             self.report_generator.generate_detail_report(result, results)
         
-        # Generate summary report
+        # Generate summary reports (HTML)
         self.report_generator.generate_summary_report(results)
+        
+        # Generate markdown summary for CI/CD pipeline integration
+        markdown_exporter = MarkdownExporter(self.config.html_path)
+        markdown_exporter.export_summary(results)
         
         # Save results as JSON for potential later use
         json_path = self.config.html_path / 'results.json'

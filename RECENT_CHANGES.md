@@ -139,14 +139,89 @@ Result pages now display **both grayscale (luminance) and RGB channel histograms
 - Better for comparing histogram equalization effectiveness
 - More informative than color-only or grayscale-only histograms
 
+## 6. Markdown Report Exporter for CI/CD Integration
+
+### Overview
+A new markdown exporter generates machine-readable summary reports optimized for CI/CD pipeline integration (Azure DevOps, GitHub Actions, etc.). Both HTML and Markdown summaries are now generated automatically.
+
+### Features
+- **Pipeline-Agnostic Format**: Pure markdown suitable for any CI/CD system
+- **Comprehensive Statistics**: Summary of all comparison results with categorization
+- **Difference Metrics**: Min, max, and average difference percentages
+- **Status Table**: Quick reference for all comparisons with color-coded status
+- **Easy Integration**: Markdown can be parsed by scripts or displayed in pipeline summaries
+
+### Changes Made
+- **File**: `ImageComparisonSystem/markdown_exporter.py` (new file)
+  - New `MarkdownExporter` class for generating markdown reports
+  - Methods:
+    - `generate_summary()`: Create markdown summary with statistics
+    - `generate_comparison_table()`: Build markdown table of results
+    - `_get_timestamp()`: Add ISO-format timestamp for audit trails
+  
+- **File**: `ImageComparisonSystem/report_generator.py`
+  - Kept HTML generation separate and intact
+  - Delegates markdown generation to `MarkdownExporter`
+  - Cleaner separation of concerns
+
+- **File**: `ImageComparisonSystem/comparator.py`
+  - Updated `_generate_reports()` to invoke both HTML and markdown export
+
+### Output Files
+Both are generated in the reports directory:
+- `summary.html` - Interactive HTML dashboard (existing)
+- `summary.md` - Markdown summary for CI/CD (new)
+
+### Azure DevOps Integration Example
+```yaml
+# In azure-pipelines.yml
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathToPublish: '$(Build.ArtifactStagingDirectory)/reports'
+    artifactName: 'image-comparison-reports'
+
+- script: |
+    cat reports/summary.md >> $(Build.BuildLogFilePath)
+```
+
+### GitHub Actions Integration Example
+```yaml
+# In workflow file
+- name: Generate comparison summary
+  run: python -m ImageComparisonSystem.main --base-dir .
+
+- name: Post summary to PR
+  uses: actions/github-script@v6
+  with:
+    script: |
+      const fs = require('fs');
+      const summary = fs.readFileSync('reports/summary.md', 'utf8');
+      core.summary.addRaw(summary).write();
+```
+
+### Markdown Format Features
+- **Statistics Section**: Categorized counts (identical, minor, moderate, major)
+- **Metrics Table**: Min/max/average differences with proper formatting
+- **Results Table**: Each comparison with filename, percentage, status, and link
+- **Navigation Links**: References to HTML reports for detailed viewing
+- **Timestamp**: ISO format for audit and traceability
+
+### Benefits for CI/CD
+1. **Machine Readable**: Easy to parse with regex or markdown parsers
+2. **Pipeline Compatible**: Works with any CI system (Azure DevOps, GitHub, GitLab, Jenkins, etc.)
+3. **Trackable**: Timestamps for build correlation
+4. **Reportable**: Can be included in build summaries, emails, or notifications
+5. **Flexible**: Markdown format is human-readable and can be reformatted as needed
+
 ## Summary of Files Modified
 
 | File | Changes |
 |------|---------|
-| `ImageComparisonSystem/comparator.py` | Recursive search, smart matching, unenhanced diff target, equalization config passing |
+| `ImageComparisonSystem/comparator.py` | Recursive search, smart matching, unenhanced diff target, equalization config passing, markdown export integration |
 | `ImageComparisonSystem/config.py` | Recursive validation, CLAHE and grayscale equalization options |
 | `ImageComparisonSystem/processor.py` | Enhanced equalization, improved histogram visualization |
 | `ImageComparisonSystem/report_generator.py` | Interactive metric descriptions, improved CSS/JS |
+| `ImageComparisonSystem/markdown_exporter.py` | New markdown export functionality |
 
 ## Configuration Examples
 
