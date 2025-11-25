@@ -96,3 +96,89 @@ class TestComparisonResult:
         result_dict = result.to_dict()
         assert result_dict["metrics"] == metrics
         assert result_dict["metrics"]["pixel_diff"]["percentage"] == 1.2
+
+    def test_get_subdirectory_with_subdirectory(self, tmp_path):
+        """get_subdirectory should return subdirectory path."""
+        base_path = tmp_path / "images"
+        base_path.mkdir()
+        subdir = base_path / "ui" / "screenshots"
+        subdir.mkdir(parents=True)
+        image_path = subdir / "test.png"
+
+        result = ComparisonResult(
+            filename="test.png",
+            new_image_path=image_path,
+            known_good_path=Path("/known.png"),
+            diff_image_path=Path("/diff.png"),
+            annotated_image_path=Path("/annotated.png"),
+            metrics={},
+            percent_different=1.0,
+            histogram_data=""
+        )
+
+        subdir_result = result.get_subdirectory(base_path)
+        assert subdir_result == "ui/screenshots"
+
+    def test_get_subdirectory_root_level(self, tmp_path):
+        """get_subdirectory should return empty string for root level images."""
+        base_path = tmp_path / "images"
+        base_path.mkdir()
+        image_path = base_path / "test.png"
+
+        result = ComparisonResult(
+            filename="test.png",
+            new_image_path=image_path,
+            known_good_path=Path("/known.png"),
+            diff_image_path=Path("/diff.png"),
+            annotated_image_path=Path("/annotated.png"),
+            metrics={},
+            percent_different=1.0,
+            histogram_data=""
+        )
+
+        subdir_result = result.get_subdirectory(base_path)
+        assert subdir_result == ""
+
+    def test_get_subdirectory_invalid_base_path(self, tmp_path):
+        """get_subdirectory should return empty string for invalid base path."""
+        base_path = tmp_path / "images"
+        other_path = tmp_path / "other"
+        other_path.mkdir()
+        image_path = other_path / "test.png"
+
+        result = ComparisonResult(
+            filename="test.png",
+            new_image_path=image_path,
+            known_good_path=Path("/known.png"),
+            diff_image_path=Path("/diff.png"),
+            annotated_image_path=Path("/annotated.png"),
+            metrics={},
+            percent_different=1.0,
+            histogram_data=""
+        )
+
+        subdir_result = result.get_subdirectory(base_path)
+        assert subdir_result == ""
+
+    def test_to_dict_with_base_path(self, tmp_path):
+        """to_dict should include subdirectory when base_path is provided."""
+        base_path = tmp_path / "images"
+        base_path.mkdir()
+        subdir = base_path / "ui"
+        subdir.mkdir()
+        image_path = subdir / "test.png"
+
+        result = ComparisonResult(
+            filename="test.png",
+            new_image_path=image_path,
+            known_good_path=Path("/known.png"),
+            diff_image_path=Path("/diff.png"),
+            annotated_image_path=Path("/annotated.png"),
+            metrics={"ssim": 0.95},
+            percent_different=1.2,
+            histogram_data="data"
+        )
+
+        result_dict = result.to_dict(base_path)
+        assert "subdirectory" in result_dict
+        assert result_dict["subdirectory"] == "ui"

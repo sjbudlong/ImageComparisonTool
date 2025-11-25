@@ -67,6 +67,16 @@ class ReportGenerator:
             diff_rel: str = self._get_relative_path(result.diff_image_path)
             annotated_rel: str = self._get_relative_path(result.annotated_image_path)
             
+            # Get subdirectory for breadcrumb and back link
+            subdir = result.get_subdirectory(self.config.new_path)
+            if subdir:
+                safe_subdir = subdir.replace('/', '_').replace('\\', '_')
+                subdir_link = f"subdir_{safe_subdir}.html"
+                breadcrumb_middle = f'<a href="{subdir_link}">{subdir}</a>'
+            else:
+                subdir_link = "subdir_root.html"
+                breadcrumb_middle = '<a href="subdir_root.html">Ungrouped</a>'
+
             # Generate navigation links
             prev_link: str = ''
             next_link: str = ''
@@ -74,19 +84,19 @@ class ReportGenerator:
                 # Find current result index
                 try:
                     current_idx: int = next(i for i, r in enumerate(results) if r.filename == result.filename)
-                    
+
                     # Previous link
                     if current_idx > 0:
                         prev_result: ComparisonResult = results[current_idx - 1]
                         prev_link = f'<a href="{prev_result.filename}.html" class="btn">← Previous</a>'
-                    
+
                     # Next link
                     if current_idx < len(results) - 1:
                         next_result: ComparisonResult = results[current_idx + 1]
                         next_link = f'<a href="{next_result.filename}.html" class="btn">Next →</a>'
                 except StopIteration:
                     pass
-            
+
             html: str = self._get_html_template()
             html = html.replace('{{TITLE}}', f"Comparison: {result.filename}")
             html = html.replace('{{FILENAME}}', result.filename)
@@ -97,6 +107,8 @@ class ReportGenerator:
             html = html.replace('{{ANNOTATED_IMAGE}}', annotated_rel)
             html = html.replace('{{METRICS}}', self._format_metrics(result.metrics))
             html = html.replace('{{HISTOGRAM_DATA}}', result.histogram_data or '')
+            html = html.replace('{{BREADCRUMB_MIDDLE}}', breadcrumb_middle)
+            html = html.replace('{{SUBDIR_LINK}}', subdir_link)
             html = html.replace('{{PREV_LINK}}', prev_link)
             html = html.replace('{{NEXT_LINK}}', next_link)
             
@@ -107,38 +119,174 @@ class ReportGenerator:
             logger.error(f"Error generating report for {result.filename}: {e}", exc_info=True)
     
     def generate_summary_report(self, results: List[ComparisonResult]):
-        """Generate summary HTML report listing all comparisons."""
+        """Generate summary HTML report listing all comparisons grouped by subdirectory."""
         output_path = self.config.html_path / 'summary.html'
-        
+
         try:
+            # Group results by subdirectory
+            grouped = self._group_by_subdirectory(results)
+
+            # Sort subdirectories: empty string (root) first, then alphabetically
+            sorted_subdirs = sorted(grouped.keys(), key=lambda x: (x != '', x))
+
             rows_html = []
-            for idx, result in enumerate(results):
-                detail_link = f"{result.filename}.html"
-                status_class = self._get_status_class(result.percent_different)
-                
+            for idx, subdir in enumerate(sorted_subdirs):
+                subdir_results = grouped[subdir]
+
+                # Calculate statistics
+                image_count = len(subdir_results)
+                avg_diff = sum(r.percent_different for r in subdir_results) / image_count
+                max_diff = max(r.percent_different for r in subdir_results)
+
+                # Determine status class based on max difference
+                status_class = self._get_status_class(max_diff)
+
+                # Display name and link
+                if subdir:
+                    display_name = subdir
+                    safe_subdir = subdir.replace('/', '_').replace('\\', '_')
+                    subdir_link = f"subdir_{safe_subdir}.html"
+                else:
+                    display_name = "Ungrouped"
+                    subdir_link = "subdir_root.html"
+
                 row = f'''
                 <tr class="{status_class}">
                     <td>{idx + 1}</td>
-                    <td><a href="{detail_link}">{result.filename}</a></td>
-                    <td>{result.percent_different:.4f}%</td>
-                    <td>{self._get_status_text(result.percent_different)}</td>
+                    <td><a href="{subdir_link}">{display_name}</a></td>
+                    <td>{image_count}</td>
+                    <td>{avg_diff:.4f}%</td>
+                    <td>{max_diff:.4f}%</td>
                     <td>
-                        <a href="{detail_link}" class="btn-view">View Details</a>
+                        <a href="{subdir_link}" class="btn-view">View Directory</a>
                     </td>
                 </tr>
             '''
                 rows_html.append(row)
-            
+
             summary_html = self._get_summary_template()
             summary_html = summary_html.replace('{{TOTAL_COUNT}}', str(len(results)))
             summary_html = summary_html.replace('{{ROWS}}', '\n'.join(rows_html))
-            
+
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(summary_html)
             logger.info("Generated summary report: summary.html")
         except Exception as e:
             logger.error(f"Error generating summary report: {e}", exc_info=True)
-    
+
+    def generate_subdirectory_index(self, subdirectory: str, results: List[ComparisonResult]) -> None:
+        """Generate index page for a subdirectory showing all images with thumbnails.
+
+        Creates an HTML page with thumbnail grid showing all comparison results
+        in a subdirectory. Each entry displays 4 thumbnails (new, known_good,
+        diff, annotated) in a horizontal row.
+
+        Args:
+            subdirectory: Subdirectory path (empty string for root)
+            results: List of comparison results for this subdirectory
+        """
+        # Determine output filename
+        if subdirectory:
+            # Create safe filename from subdirectory path
+            safe_subdir = subdirectory.replace('/', '_').replace('\\', '_')
+            output_filename = f"subdir_{safe_subdir}.html"
+            display_name = subdirectory
+        else:
+            output_filename = "subdir_root.html"
+            display_name = "Ungrouped"
+
+        output_path = self.config.html_path / output_filename
+
+        try:
+            # Generate comparison cards
+            cards_html = []
+            for result in results:
+                # Get relative paths for images
+                new_img_rel = self._get_relative_path(result.new_image_path)
+                known_good_rel = self._get_relative_path(result.known_good_path)
+                diff_rel = self._get_relative_path(result.diff_image_path)
+                annotated_rel = self._get_relative_path(result.annotated_image_path)
+
+                # Detail page link
+                detail_link = f"{result.filename}.html"
+
+                # Status class for styling
+                status_class = self._get_status_class(result.percent_different)
+
+                # Build card HTML
+                card = f'''
+            <a href="{detail_link}" class="comparison-card {status_class}">
+                <div class="card-header">
+                    <div class="filename">{result.filename}</div>
+                    <div class="diff-badge">{result.percent_different:.4f}% diff</div>
+                </div>
+                <div class="thumbnail-row">
+                    <div class="thumbnail-item">
+                        <div class="thumbnail-label">New</div>
+                        <img src="{new_img_rel}" alt="New">
+                    </div>
+                    <div class="thumbnail-item">
+                        <div class="thumbnail-label">Known Good</div>
+                        <img src="{known_good_rel}" alt="Known Good">
+                    </div>
+                    <div class="thumbnail-item">
+                        <div class="thumbnail-label">Diff</div>
+                        <img src="{diff_rel}" alt="Diff">
+                    </div>
+                    <div class="thumbnail-item">
+                        <div class="thumbnail-label">Annotated</div>
+                        <img src="{annotated_rel}" alt="Annotated">
+                    </div>
+                </div>
+            </a>
+            '''
+                cards_html.append(card)
+
+            # Get template and replace placeholders
+            html = self._get_subdirectory_index_template()
+            html = html.replace('{{SUBDIRECTORY}}', display_name)
+            html = html.replace('{{SUBDIRECTORY_DISPLAY}}', display_name)
+            html = html.replace('{{BACK_TO_SUMMARY}}', 'summary.html')
+            html = html.replace('{{IMAGE_COUNT}}', str(len(results)))
+            html = html.replace('{{PLURAL}}', 's' if len(results) != 1 else '')
+            html = html.replace('{{COMPARISON_CARDS}}', '\n'.join(cards_html))
+
+            # Write file
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(html)
+
+            logger.info(f"Generated subdirectory index: {output_filename}")
+
+        except Exception as e:
+            logger.error(f"Error generating subdirectory index for {subdirectory}: {e}", exc_info=True)
+
+    def _group_by_subdirectory(self, results: List[ComparisonResult]):
+        """Group comparison results by subdirectory.
+
+        Groups results based on their subdirectory structure within the
+        new_images directory. Results are sorted within each group by
+        percent_different (descending).
+
+        Args:
+            results: List of all comparison results
+
+        Returns:
+            Dictionary mapping subdirectory path to list of results.
+            Empty string key represents root-level images.
+        """
+        from collections import defaultdict
+        grouped = defaultdict(list)
+
+        for result in results:
+            subdir = result.get_subdirectory(self.config.new_path)
+            grouped[subdir].append(result)
+
+        # Sort each group by percent_different (descending)
+        for subdir in grouped:
+            grouped[subdir].sort(key=lambda x: x.percent_different, reverse=True)
+
+        return dict(grouped)
+
     def _get_relative_path(self, path: Path) -> str:
         """Get relative path from HTML directory to image."""
         try:
@@ -223,7 +371,182 @@ class ReportGenerator:
         """Generate navigation link HTML - deprecated, kept for compatibility."""
         # Navigation is now handled in generate_detail_report
         return ''
-    
+
+    def _get_subdirectory_index_template(self) -> str:
+        """Return HTML template for subdirectory index page.
+
+        Creates a template showing all images in a subdirectory with thumbnails.
+        Each entry displays 4 thumbnails in a horizontal row: new, known_good,
+        diff, and annotated_diff images.
+        """
+        return '''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{SUBDIRECTORY}} - Image Comparison</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Breadcrumb navigation */
+        .breadcrumb {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .breadcrumb a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+        .breadcrumb span {
+            color: #999;
+            margin: 0 8px;
+        }
+
+        /* Header */
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .summary-info {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        /* Image comparison cards */
+        .comparison-grid {
+            display: grid;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .comparison-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .comparison-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        /* Status-based left border coloring */
+        .comparison-card.status-identical { border-left: 4px solid #27ae60; }
+        .comparison-card.status-minor { border-left: 4px solid #f39c12; }
+        .comparison-card.status-moderate { border-left: 4px solid #e67e22; }
+        .comparison-card.status-major { border-left: 4px solid #e74c3c; }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+        .filename {
+            font-weight: 600;
+            font-size: 1.1em;
+            color: #2c3e50;
+        }
+        .diff-badge {
+            background: #e74c3c;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        /* Thumbnail grid - 4 images in a horizontal row */
+        .thumbnail-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        .thumbnail-item {
+            text-align: center;
+        }
+        .thumbnail-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        .thumbnail-item img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        /* Responsive design */
+        @media (max-width: 1200px) {
+            .thumbnail-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 600px) {
+            .thumbnail-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb">
+            <a href="{{BACK_TO_SUMMARY}}">Summary</a>
+            <span>›</span>
+            <strong>{{SUBDIRECTORY_DISPLAY}}</strong>
+        </nav>
+
+        <!-- Header -->
+        <header>
+            <h1>{{SUBDIRECTORY_DISPLAY}}</h1>
+            <div class="summary-info">
+                {{IMAGE_COUNT}} image{{PLURAL}} in this directory
+            </div>
+        </header>
+
+        <!-- Comparison Cards -->
+        <div class="comparison-grid">
+            {{COMPARISON_CARDS}}
+        </div>
+    </div>
+</body>
+</html>'''
+
     def _get_html_template(self) -> str:
         """Return HTML template for detail page."""
         return '''<!DOCTYPE html>
@@ -261,8 +584,34 @@ class ReportGenerator:
             color: #e74c3c;
             font-weight: bold;
         }
+        .breadcrumb {
+            margin: 15px 0;
+            font-size: 0.95em;
+            color: #666;
+        }
+        .breadcrumb a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+        .breadcrumb-separator {
+            margin: 0 8px;
+            color: #999;
+        }
         .nav-buttons {
             margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .nav-left {
+            display: flex;
+            gap: 10px;
+        }
+        .nav-right {
             display: flex;
             gap: 10px;
         }
@@ -273,8 +622,16 @@ class ReportGenerator:
             text-decoration: none;
             border-radius: 5px;
             display: inline-block;
+            min-width: 140px;
+            text-align: center;
         }
         .btn:hover { background: #2980b9; }
+        .btn-back {
+            background: #95a5a6;
+        }
+        .btn-back:hover {
+            background: #7f8c8d;
+        }
         .image-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
@@ -422,12 +779,23 @@ class ReportGenerator:
         <header>
             <h1>{{FILENAME}}</h1>
             <div class="diff-percentage">{{PERCENT_DIFF}}% Different</div>
+            <div class="breadcrumb">
+                <a href="summary.html">Summary</a>
+                <span class="breadcrumb-separator">›</span>
+                {{BREADCRUMB_MIDDLE}}
+                <span class="breadcrumb-separator">›</span>
+                <span>{{FILENAME}}</span>
+            </div>
         </header>
-        
+
         <div class="nav-buttons">
-            <a href="summary.html" class="btn">← Back to Summary</a>
-            {{PREV_LINK}}
-            {{NEXT_LINK}}
+            <div class="nav-left">
+                <a href="{{SUBDIR_LINK}}" class="btn btn-back">← Back to Directory</a>
+            </div>
+            <div class="nav-right">
+                {{PREV_LINK}}
+                {{NEXT_LINK}}
+            </div>
         </div>
         
         <div class="image-grid">
@@ -578,16 +946,17 @@ class ReportGenerator:
         <h1>Image Comparison Summary</h1>
         <div class="summary-info">
             Total comparisons: <strong>{{TOTAL_COUNT}}</strong><br>
-            Sorted by difference percentage (highest to lowest)
+            Results grouped by subdirectory
         </div>
-        
+
         <table>
             <thead>
                 <tr>
                     <th>#</th>
-                    <th>Filename</th>
-                    <th>Difference %</th>
-                    <th>Status</th>
+                    <th>Directory</th>
+                    <th>Images</th>
+                    <th>Avg Diff %</th>
+                    <th>Max Diff %</th>
                     <th>Actions</th>
                 </tr>
             </thead>
