@@ -152,3 +152,6 @@ reports/
 
 # Results
 results.json
+
+#Claude files
+.[Cc]laude

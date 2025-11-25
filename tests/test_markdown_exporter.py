@@ -363,14 +363,14 @@ class TestMarkdownExporter:
         assert '|' in content
         assert '---' in content
 
-        # Should have links to other reports
+        # Should have links to other reports and detail pages
         assert 'summary.html' in content
         assert 'results.json' in content
-
-        # Should mention CI/CD integration
-        assert 'Azure DevOps' in content or 'CI/CD' in content
+        assert 'test.png' in content
+        assert '[View →]' in content  # Links to detail reports
 
         logger.info("✓ Markdown pipeline-agnostic format test passed")
+
 
     def test_markdown_includes_timestamp(self, temp_image_dir, simple_test_image):
         """Markdown should include generation timestamp."""

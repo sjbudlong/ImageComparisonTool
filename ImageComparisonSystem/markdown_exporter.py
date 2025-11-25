@@ -93,19 +93,20 @@ class MarkdownExporter:
                 "",
             ])
             
-            # Add results table
+            # Add results table with links to detail reports
             md_lines.extend([
                 "## Detailed Results",
                 "",
-                "| # | Filename | Difference % | Status |",
-                "|---|----------|-------------|--------|",
+                "| # | Filename | Difference % | Status | Details |",
+                "|---|----------|-------------|--------|---------|",
             ])
             
             for idx, result in enumerate(results, 1):
                 status = self._get_status_text(result.percent_different)
                 status_emoji = self._get_status_emoji(status)
+                detail_link = f"[View →]({result.filename}.html)"
                 md_lines.append(
-                    f"| {idx} | `{result.filename}` | {result.percent_different:.4f}% | {status_emoji} {status} |"
+                    f"| {idx} | `{result.filename}` | {result.percent_different:.4f}% | {status_emoji} {status} | {detail_link} |"
                 )
             
             # Add footer with links and metadata
@@ -117,18 +118,6 @@ class MarkdownExporter:
                 "",
                 "- [HTML Summary Report](summary.html) - Interactive dashboard with images",
                 "- [Results JSON](results.json) - Machine-readable format",
-                "",
-                "## Azure DevOps Integration",
-                "",
-                "This markdown can be embedded in Azure DevOps Pipeline summaries using:",
-                "```yaml",
-                "- task: PublishBuildArtifacts@1",
-                "  inputs:",
-                "    PathtoPublish: '$(Build.ArtifactStagingDirectory)/reports'",
-                "- task: UploadBuildLog@1",
-                "  inputs:",
-                "    LogFolderPath: '$(Build.ArtifactStagingDirectory)/reports'",
-                "```",
                 "",
                 f"*Generated: {self._get_timestamp()}*",
             ])
