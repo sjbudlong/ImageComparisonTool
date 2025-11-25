@@ -11,6 +11,54 @@ from typing import Tuple
 
 
 @dataclass
+class HistogramConfig:
+    """Configuration settings for histogram visualization.
+    
+    Controls the visual appearance and data representation of histogram comparisons.
+    """
+    
+    # Data representation
+    bins: int = 256
+    """Number of histogram bins for intensity distribution (64-512)."""
+    
+    # Visual layout
+    figure_width: float = 16
+    """Histogram figure width in inches."""
+    figure_height: float = 6
+    """Histogram figure height in inches."""
+    dpi: int = 100
+    """Resolution for histogram rendering (dots per inch)."""
+    
+    # Line styling
+    grayscale_alpha: float = 0.7
+    """Transparency for grayscale histogram line (0-1)."""
+    rgb_alpha: float = 0.7
+    """Transparency for RGB channel lines (0-1)."""
+    grayscale_linewidth: float = 2.0
+    """Line width for grayscale histogram."""
+    rgb_linewidth: float = 1.5
+    """Line width for RGB channel histograms."""
+    grid_alpha: float = 0.3
+    """Grid transparency (0-1)."""
+    
+    # Title and labels
+    title: str = 'Histogram Comparison - Grayscale & RGB Channels'
+    """Histogram display title."""
+    
+    # Colors
+    grayscale_color: str = 'black'
+    """Color for grayscale histogram (named color or hex)."""
+    rgb_colors: Tuple[str, str, str] = ('red', 'green', 'blue')
+    """Colors for RGB channels."""
+    
+    # Feature toggles
+    show_grayscale: bool = True
+    """Whether to display grayscale histogram."""
+    show_rgb: bool = True
+    """Whether to display RGB channel histograms."""
+
+
+@dataclass
 class Config:
     """Configuration settings for image comparison.
     
@@ -55,6 +103,10 @@ class Config:
     diff_enhancement_factor: float = 5.0
     """Contrast enhancement multiplier for difference visualization."""
     
+    # Histogram visualization
+    histogram_config: HistogramConfig = None
+    """Configuration for histogram visualization."""
+    
     def __post_init__(self) -> None:
         """Convert string paths to Path objects and validate.
         
@@ -63,6 +115,10 @@ class Config:
         """
         if isinstance(self.base_dir, str):
             self.base_dir = Path(self.base_dir)
+        
+        # Initialize default histogram config if not provided
+        if self.histogram_config is None:
+            self.histogram_config = HistogramConfig()
         
         # Ensure base directory exists
         self.base_dir.mkdir(parents=True, exist_ok=True)

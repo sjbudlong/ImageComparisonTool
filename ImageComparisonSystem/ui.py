@@ -8,7 +8,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
 from typing import Optional, Tuple, Any
-from config import Config
+from config import Config, HistogramConfig
 
 logger = logging.getLogger("ImageComparison")
 
@@ -205,6 +205,107 @@ class ComparisonUI:
             row=row, column=1, sticky=(tk.W, tk.E), padx=5
         )
         
+        # Separator for histogram settings
+        row += 1
+        ttk.Separator(main_frame, orient='horizontal').grid(
+            row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=15
+        )
+        
+        row += 1
+        ttk.Label(
+            main_frame, 
+            text="Histogram Visualization",
+            font=('Arial', 12, 'bold')
+        ).grid(row=row, column=0, columnspan=3, sticky=tk.W)
+        
+        # Histogram Bins
+        row += 1
+        ttk.Label(main_frame, text="Histogram Bins (64-512):").grid(
+            row=row, column=0, sticky=tk.W, pady=5
+        )
+        self.hist_bins_var = tk.StringVar(value="256")
+        ttk.Entry(main_frame, textvariable=self.hist_bins_var, width=50).grid(
+            row=row, column=1, sticky=(tk.W, tk.E), padx=5
+        )
+        
+        # Figure Width
+        row += 1
+        ttk.Label(main_frame, text="Figure Width (inches):").grid(
+            row=row, column=0, sticky=tk.W, pady=5
+        )
+        self.hist_width_var = tk.StringVar(value="16")
+        ttk.Entry(main_frame, textvariable=self.hist_width_var, width=50).grid(
+            row=row, column=1, sticky=(tk.W, tk.E), padx=5
+        )
+        
+        # Figure Height
+        row += 1
+        ttk.Label(main_frame, text="Figure Height (inches):").grid(
+            row=row, column=0, sticky=tk.W, pady=5
+        )
+        self.hist_height_var = tk.StringVar(value="6")
+        ttk.Entry(main_frame, textvariable=self.hist_height_var, width=50).grid(
+            row=row, column=1, sticky=(tk.W, tk.E), padx=5
+        )
+        
+        # Grayscale Alpha
+        row += 1
+        ttk.Label(main_frame, text="Grayscale Transparency (0-1):").grid(
+            row=row, column=0, sticky=tk.W, pady=5
+        )
+        self.hist_gray_alpha_var = tk.StringVar(value="0.7")
+        ttk.Entry(main_frame, textvariable=self.hist_gray_alpha_var, width=50).grid(
+            row=row, column=1, sticky=(tk.W, tk.E), padx=5
+        )
+        
+        # RGB Alpha
+        row += 1
+        ttk.Label(main_frame, text="RGB Transparency (0-1):").grid(
+            row=row, column=0, sticky=tk.W, pady=5
+        )
+        self.hist_rgb_alpha_var = tk.StringVar(value="0.7")
+        ttk.Entry(main_frame, textvariable=self.hist_rgb_alpha_var, width=50).grid(
+            row=row, column=1, sticky=(tk.W, tk.E), padx=5
+        )
+        
+        # Grayscale Line Width
+        row += 1
+        ttk.Label(main_frame, text="Grayscale Line Width:").grid(
+            row=row, column=0, sticky=tk.W, pady=5
+        )
+        self.hist_gray_lw_var = tk.StringVar(value="2.0")
+        ttk.Entry(main_frame, textvariable=self.hist_gray_lw_var, width=50).grid(
+            row=row, column=1, sticky=(tk.W, tk.E), padx=5
+        )
+        
+        # RGB Line Width
+        row += 1
+        ttk.Label(main_frame, text="RGB Line Width:").grid(
+            row=row, column=0, sticky=tk.W, pady=5
+        )
+        self.hist_rgb_lw_var = tk.StringVar(value="1.5")
+        ttk.Entry(main_frame, textvariable=self.hist_rgb_lw_var, width=50).grid(
+            row=row, column=1, sticky=(tk.W, tk.E), padx=5
+        )
+        
+        # Show Grayscale
+        row += 1
+        self.hist_show_gray_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            main_frame,
+            text="Show Grayscale Histogram",
+            variable=self.hist_show_gray_var
+        ).grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=5)
+        
+        # Show RGB
+        row += 1
+        self.hist_show_rgb_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            main_frame,
+            text="Show RGB Channel Histograms",
+            variable=self.hist_show_rgb_var
+        ).grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=5)
+        
         # Info text
         row += 1
         info_text = (
@@ -295,6 +396,20 @@ class ComparisonUI:
                 raise ValueError("Invalid color format")
             highlight_color: Tuple[int, int, int] = tuple(color_parts)
             
+            # Create histogram config
+            from config import HistogramConfig
+            hist_config = HistogramConfig(
+                bins=int(self.hist_bins_var.get()),
+                figure_width=float(self.hist_width_var.get()),
+                figure_height=float(self.hist_height_var.get()),
+                grayscale_alpha=float(self.hist_gray_alpha_var.get()),
+                rgb_alpha=float(self.hist_rgb_alpha_var.get()),
+                grayscale_linewidth=float(self.hist_gray_lw_var.get()),
+                rgb_linewidth=float(self.hist_rgb_lw_var.get()),
+                show_grayscale=self.hist_show_gray_var.get(),
+                show_rgb=self.hist_show_rgb_var.get()
+            )
+            
             self.config = Config(
                 base_dir=Path(self.base_dir_var.get()),
                 new_dir=self.new_dir_var.get(),
@@ -308,7 +423,8 @@ class ComparisonUI:
                 min_contour_area=min_contour,
                 use_histogram_equalization=self.use_histogram_var.get(),
                 highlight_color=highlight_color,
-                diff_enhancement_factor=diff_enhancement
+                diff_enhancement_factor=diff_enhancement,
+                histogram_config=hist_config
             )
             
             # Validate config

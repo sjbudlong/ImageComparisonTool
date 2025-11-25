@@ -184,7 +184,7 @@ class ImageComparator:
             new_path, known_good_path, equalize=False
         )
         histogram_data = self.processor.generate_histogram_image(
-            img_known_orig, img_new_orig
+            img_known_orig, img_new_orig, self.config.histogram_config
         )
         
         # Run all analyzers

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Test: Full Options Comparison
-# This demonstrates all available command-line options
+# This demonstrates all available command-line options including histogram visualization
 
 cd "$(dirname "$0")"
 cd ImageComparisonSystem
@@ -19,4 +19,13 @@ python main.py \
   --use-histogram-eq \
   --highlight-color "255,0,0" \
   --diff-enhancement 5.0 \
+  --histogram-bins 256 \
+  --histogram-width 16 \
+  --histogram-height 6 \
+  --histogram-gray-alpha 0.7 \
+  --histogram-rgb-alpha 0.7 \
+  --histogram-gray-linewidth 2.0 \
+  --histogram-rgb-linewidth 1.5 \
+  --show-grayscale \
+  --show-rgb \
   --skip-dependency-check

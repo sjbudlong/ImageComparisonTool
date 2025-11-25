@@ -7,12 +7,15 @@ import numpy as np
 from PIL import Image, ImageDraw
 import cv2
 from pathlib import Path
-from typing import Tuple, Optional
+from typing import Tuple, Optional, TYPE_CHECKING
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 import io
 import base64
+
+if TYPE_CHECKING:
+    from config import Config, HistogramConfig
 
 logger = logging.getLogger("ImageComparison")
 
@@ -90,7 +93,7 @@ class ImageProcessor:
             return result
     
     @staticmethod
-    def generate_histogram_image(img1: np.ndarray, img2: np.ndarray) -> str:
+    def generate_histogram_image(img1: np.ndarray, img2: np.ndarray, hist_config: Optional['HistogramConfig'] = None) -> str:
         """
         Generate a histogram comparison image as base64 encoded PNG.
         Shows both grayscale (luminance) and RGB channel histograms for comparison.
@@ -98,12 +101,18 @@ class ImageProcessor:
         Args:
             img1: First image
             img2: Second image
+            hist_config: HistogramConfig object for visualization settings
             
         Returns:
             Base64 encoded PNG image
         """
-        fig, axes = plt.subplots(2, 4, figsize=(16, 6))
-        fig.suptitle('Histogram Comparison - Grayscale & RGB Channels', fontsize=14, fontweight='bold')
+        # Use defaults if no config provided
+        if hist_config is None:
+            from config import HistogramConfig
+            hist_config = HistogramConfig()
+        
+        fig, axes = plt.subplots(2, 4, figsize=(hist_config.figure_width, hist_config.figure_height), dpi=hist_config.dpi)
+        fig.suptitle(hist_config.title, fontsize=14, fontweight='bold')
         
         # Convert to grayscale for luminance histograms
         if len(img1.shape) == 3:
@@ -113,44 +122,47 @@ class ImageProcessor:
             gray1 = img1.astype(np.uint8)
             gray2 = img2.astype(np.uint8)
         
-        # Plot grayscale histograms in column 0
-        hist_gray1, bins = np.histogram(gray1, bins=256, range=(0, 256))
-        axes[0, 0].plot(bins[:-1], hist_gray1, color='black', alpha=0.7, linewidth=2)
-        axes[0, 0].set_title('Grayscale (Known Good)', fontweight='bold')
-        axes[0, 0].set_xlim([0, 255])
-        axes[0, 0].grid(True, alpha=0.3)
-        axes[0, 0].legend(['Luminance'], loc='upper right')
+        # Plot grayscale histograms in column 0 (if enabled)
+        if hist_config.show_grayscale:
+            hist_gray1, bins = np.histogram(gray1, bins=hist_config.bins, range=(0, 256))
+            axes[0, 0].plot(bins[:-1], hist_gray1, color=hist_config.grayscale_color, alpha=hist_config.grayscale_alpha, linewidth=hist_config.grayscale_linewidth)
+            axes[0, 0].set_title('Grayscale (Known Good)', fontweight='bold')
+            axes[0, 0].set_xlim([0, 255])
+            axes[0, 0].grid(True, alpha=hist_config.grid_alpha)
+            axes[0, 0].legend(['Luminance'], loc='upper right')
+            
+            hist_gray2, _ = np.histogram(gray2, bins=hist_config.bins, range=(0, 256))
+            axes[1, 0].plot(bins[:-1], hist_gray2, color=hist_config.grayscale_color, alpha=hist_config.grayscale_alpha, linewidth=hist_config.grayscale_linewidth)
+            axes[1, 0].set_title('Grayscale (New Image)', fontweight='bold')
+            axes[1, 0].set_xlim([0, 255])
+            axes[1, 0].grid(True, alpha=hist_config.grid_alpha)
+            axes[1, 0].legend(['Luminance'], loc='upper right')
+        else:
+            axes[0, 0].axis('off')
+            axes[1, 0].axis('off')
         
-        hist_gray2, _ = np.histogram(gray2, bins=256, range=(0, 256))
-        axes[1, 0].plot(bins[:-1], hist_gray2, color='black', alpha=0.7, linewidth=2)
-        axes[1, 0].set_title('Grayscale (New Image)', fontweight='bold')
-        axes[1, 0].set_xlim([0, 255])
-        axes[1, 0].grid(True, alpha=0.3)
-        axes[1, 0].legend(['Luminance'], loc='upper right')
-        
-        # Plot RGB channel histograms in columns 1-3
-        if len(img1.shape) == 3:
-            colors = ['red', 'green', 'blue']
-            for i, color in enumerate(colors):
+        # Plot RGB channel histograms in columns 1-3 (if enabled)
+        if hist_config.show_rgb and len(img1.shape) == 3:
+            for i, color in enumerate(hist_config.rgb_colors):
                 col = i + 1
                 
                 # Image 1 histograms
-                hist1, bins = np.histogram(img1[:, :, i], bins=256, range=(0, 256))
-                axes[0, col].plot(bins[:-1], hist1, color=color, alpha=0.7, linewidth=1.5)
+                hist1, bins = np.histogram(img1[:, :, i], bins=hist_config.bins, range=(0, 256))
+                axes[0, col].plot(bins[:-1], hist1, color=color, alpha=hist_config.rgb_alpha, linewidth=hist_config.rgb_linewidth)
                 axes[0, col].set_title(f'{color.capitalize()} Channel (Known Good)', fontweight='bold')
                 axes[0, col].set_xlim([0, 255])
-                axes[0, col].grid(True, alpha=0.3)
+                axes[0, col].grid(True, alpha=hist_config.grid_alpha)
                 axes[0, col].legend([color.capitalize()], loc='upper right')
                 
                 # Image 2 histograms
-                hist2, _ = np.histogram(img2[:, :, i], bins=256, range=(0, 256))
-                axes[1, col].plot(bins[:-1], hist2, color=color, alpha=0.7, linewidth=1.5)
+                hist2, _ = np.histogram(img2[:, :, i], bins=hist_config.bins, range=(0, 256))
+                axes[1, col].plot(bins[:-1], hist2, color=color, alpha=hist_config.rgb_alpha, linewidth=hist_config.rgb_linewidth)
                 axes[1, col].set_title(f'{color.capitalize()} Channel (New Image)', fontweight='bold')
                 axes[1, col].set_xlim([0, 255])
-                axes[1, col].grid(True, alpha=0.3)
+                axes[1, col].grid(True, alpha=hist_config.grid_alpha)
                 axes[1, col].legend([color.capitalize()], loc='upper right')
         else:
-            # Hide RGB columns for grayscale images
+            # Hide RGB columns for grayscale images or if disabled
             for i in range(1, 4):
                 axes[0, i].axis('off')
                 axes[1, i].axis('off')
