@@ -34,13 +34,45 @@ class ComparisonResult:
     """Overall percentage difference between images."""
     histogram_data: str
     """Base64 encoded histogram comparison image."""
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def get_subdirectory(self, base_path: Path) -> str:
+        """Get subdirectory relative to base path.
+
+        Extracts the subdirectory component from the new_image_path relative
+        to the specified base path. This is used for organizing reports by
+        directory structure.
+
+        Args:
+            base_path: Base directory (e.g., config.new_path)
+
+        Returns:
+            Subdirectory path as string with forward slashes, or empty string
+            for root-level images
+
+        Example:
+            If new_image_path is /base/new/renders/scene1/image.png
+            and base_path is /base/new
+            Returns: "renders/scene1"
+        """
+        try:
+            rel_path = self.new_image_path.relative_to(base_path)
+            parent = rel_path.parent
+            if parent == Path('.'):
+                return ''  # Root level
+            return str(parent).replace('\\', '/')
+        except ValueError:
+            return ''
+
+    def to_dict(self, base_path: Path = None) -> Dict[str, Any]:
         """Convert to dictionary for serialization.
-        
+
         Converts the dataclass to a dictionary suitable for JSON serialization,
-        converting Path objects to strings.
-        
+        converting Path objects to strings. Optionally includes subdirectory
+        information if base_path is provided.
+
+        Args:
+            base_path: Optional base path for computing subdirectory
+
         Returns:
             Dictionary representation with Path objects converted to strings
         """
@@ -50,4 +82,9 @@ class ComparisonResult:
         data['known_good_path'] = str(data['known_good_path'])
         data['diff_image_path'] = str(data['diff_image_path'])
         data['annotated_image_path'] = str(data['annotated_image_path'])
+
+        # Include subdirectory if base_path provided
+        if base_path:
+            data['subdirectory'] = self.get_subdirectory(base_path)
+
         return data

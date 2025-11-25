@@ -84,14 +84,14 @@ class TestReportGenerator:
         logger.info("✓ Detail report generation test passed")
 
     def test_generate_summary_report_creates_file(self, valid_config, simple_test_image):
-        """generate_summary_report should create summary HTML."""
+        """generate_summary_report should create summary HTML with subdirectories."""
         logger.debug("Testing summary report generation")
 
         # Ensure directories exist
         valid_config.diff_path.mkdir(parents=True, exist_ok=True)
         valid_config.html_path.mkdir(parents=True, exist_ok=True)
 
-        # Create test results
+        # Create test results - all in root directory
         results = []
         for i in range(3):
             new_path = valid_config.new_path / f"test{i}.png"
@@ -123,13 +123,13 @@ class TestReportGenerator:
         output_path = valid_config.html_path / "summary.html"
         assert output_path.exists()
 
-        # Verify content
+        # Verify content - now shows subdirectories instead of individual files
         content = output_path.read_text(encoding='utf-8')
         assert "Image Comparison Summary" in content
         assert "3" in content  # Total count
-        assert "test0.png" in content
-        assert "test1.png" in content
-        assert "test2.png" in content
+        assert "Ungrouped" in content  # Root-level files shown as "Ungrouped"
+        assert "Directory" in content  # Column header
+        assert "subdir_root.html" in content  # Link to root subdirectory index
 
         logger.info("✓ Summary report generation test passed")
 
@@ -417,3 +417,262 @@ class TestReportGenerator:
         assert output_path.exists()
 
         logger.info("✓ Report with missing histogram data test passed")
+
+    def test_group_by_subdirectory(self, valid_config, simple_test_image):
+        """_group_by_subdirectory should group results correctly."""
+        logger.debug("Testing subdirectory grouping")
+
+        # Create test results in different subdirectories
+        results = []
+
+        # Root level image
+        root_path = valid_config.new_path / "root.png"
+        simple_test_image.save(root_path)
+        results.append(ComparisonResult(
+            filename="root.png",
+            new_image_path=root_path,
+            known_good_path=Path("/known.png"),
+            diff_image_path=Path("/diff.png"),
+            annotated_image_path=Path("/annotated.png"),
+            metrics={},
+            percent_different=1.0,
+            histogram_data=""
+        ))
+
+        # Subdirectory images
+        ui_dir = valid_config.new_path / "ui"
+        ui_dir.mkdir()
+        for i in range(2):
+            ui_path = ui_dir / f"ui{i}.png"
+            simple_test_image.save(ui_path)
+            results.append(ComparisonResult(
+                filename=f"ui{i}.png",
+                new_image_path=ui_path,
+                known_good_path=Path("/known.png"),
+                diff_image_path=Path("/diff.png"),
+                annotated_image_path=Path("/annotated.png"),
+                metrics={},
+                percent_different=float(i),
+                histogram_data=""
+            ))
+
+        generator = ReportGenerator(valid_config)
+        grouped = generator._group_by_subdirectory(results)
+
+        # Should have 2 groups: "" (root) and "ui"
+        assert len(grouped) == 2
+        assert "" in grouped
+        assert "ui" in grouped
+        assert len(grouped[""]) == 1
+        assert len(grouped["ui"]) == 2
+
+        # Results should be sorted by percent_different descending
+        assert grouped["ui"][0].percent_different >= grouped["ui"][1].percent_different
+
+        logger.info("✓ Subdirectory grouping test passed")
+
+    def test_generate_subdirectory_index(self, valid_config, simple_test_image):
+        """generate_subdirectory_index should create subdirectory index page."""
+        logger.debug("Testing subdirectory index generation")
+
+        # Ensure directories exist
+        valid_config.diff_path.mkdir(parents=True, exist_ok=True)
+        valid_config.html_path.mkdir(parents=True, exist_ok=True)
+
+        # Create test results
+        ui_dir = valid_config.new_path / "ui"
+        ui_dir.mkdir()
+        results = []
+
+        for i in range(2):
+            new_path = ui_dir / f"test{i}.png"
+            known_path = valid_config.known_good_path / f"test{i}.png"
+            diff_path = valid_config.diff_path / f"diff_test{i}.png"
+            annotated_path = valid_config.diff_path / f"annotated_test{i}.png"
+
+            simple_test_image.save(new_path)
+            simple_test_image.save(known_path)
+            simple_test_image.save(diff_path)
+            simple_test_image.save(annotated_path)
+
+            results.append(ComparisonResult(
+                filename=f"test{i}.png",
+                new_image_path=new_path,
+                known_good_path=known_path,
+                diff_image_path=diff_path,
+                annotated_image_path=annotated_path,
+                metrics={},
+                percent_different=float(i),
+                histogram_data=""
+            ))
+
+        generator = ReportGenerator(valid_config)
+        generator.generate_subdirectory_index("ui", results)
+
+        # Verify file was created
+        output_path = valid_config.html_path / "subdir_ui.html"
+        assert output_path.exists()
+
+        # Verify content
+        content = output_path.read_text(encoding='utf-8')
+        assert "ui" in content
+        assert "test0.png" in content
+        assert "test1.png" in content
+        assert "thumbnail-row" in content  # CSS class for thumbnails
+        assert "summary.html" in content  # Breadcrumb link to summary
+
+        logger.info("✓ Subdirectory index generation test passed")
+
+    def test_generate_subdirectory_index_root(self, valid_config, simple_test_image):
+        """generate_subdirectory_index should handle root level (Ungrouped)."""
+        logger.debug("Testing subdirectory index for root level")
+
+        # Ensure directories exist
+        valid_config.diff_path.mkdir(parents=True, exist_ok=True)
+        valid_config.html_path.mkdir(parents=True, exist_ok=True)
+
+        # Create root level result
+        new_path = valid_config.new_path / "root.png"
+        known_path = valid_config.known_good_path / "root.png"
+        diff_path = valid_config.diff_path / "diff_root.png"
+        annotated_path = valid_config.diff_path / "annotated_root.png"
+
+        simple_test_image.save(new_path)
+        simple_test_image.save(known_path)
+        simple_test_image.save(diff_path)
+        simple_test_image.save(annotated_path)
+
+        result = ComparisonResult(
+            filename="root.png",
+            new_image_path=new_path,
+            known_good_path=known_path,
+            diff_image_path=diff_path,
+            annotated_image_path=annotated_path,
+            metrics={},
+            percent_different=1.0,
+            histogram_data=""
+        )
+
+        generator = ReportGenerator(valid_config)
+        generator.generate_subdirectory_index("", [result])
+
+        # Verify file was created with "root" suffix
+        output_path = valid_config.html_path / "subdir_root.html"
+        assert output_path.exists()
+
+        # Verify content shows "Ungrouped"
+        content = output_path.read_text(encoding='utf-8')
+        assert "Ungrouped" in content
+        assert "root.png" in content
+
+        logger.info("✓ Subdirectory index for root level test passed")
+
+    def test_summary_report_with_subdirectories(self, valid_config, simple_test_image):
+        """generate_summary_report should show subdirectory statistics."""
+        logger.debug("Testing summary report with subdirectories")
+
+        # Ensure directories exist
+        valid_config.diff_path.mkdir(parents=True, exist_ok=True)
+        valid_config.html_path.mkdir(parents=True, exist_ok=True)
+
+        # Create results in different subdirectories
+        results = []
+
+        # Root level
+        root_path = valid_config.new_path / "root.png"
+        simple_test_image.save(root_path)
+        results.append(ComparisonResult(
+            filename="root.png",
+            new_image_path=root_path,
+            known_good_path=Path("/known.png"),
+            diff_image_path=Path("/diff.png"),
+            annotated_image_path=Path("/annotated.png"),
+            metrics={},
+            percent_different=1.0,
+            histogram_data=""
+        ))
+
+        # UI subdirectory
+        ui_dir = valid_config.new_path / "ui"
+        ui_dir.mkdir()
+        for i in range(2):
+            ui_path = ui_dir / f"ui{i}.png"
+            simple_test_image.save(ui_path)
+            results.append(ComparisonResult(
+                filename=f"ui{i}.png",
+                new_image_path=ui_path,
+                known_good_path=Path("/known.png"),
+                diff_image_path=Path("/diff.png"),
+                annotated_image_path=Path("/annotated.png"),
+                metrics={},
+                percent_different=2.0 + i,
+                histogram_data=""
+            ))
+
+        generator = ReportGenerator(valid_config)
+        generator.generate_summary_report(results)
+
+        # Verify file was created
+        output_path = valid_config.html_path / "summary.html"
+        assert output_path.exists()
+
+        # Verify content shows subdirectories
+        content = output_path.read_text(encoding='utf-8')
+        assert "Ungrouped" in content  # Root level
+        assert "ui" in content  # Subdirectory
+        assert "Directory" in content  # Column header
+        assert "Images" in content  # Column header
+        assert "subdir_root.html" in content  # Link to root index
+        assert "subdir_ui.html" in content  # Link to ui index
+
+        logger.info("✓ Summary report with subdirectories test passed")
+
+    def test_detail_report_has_breadcrumb(self, valid_config, simple_test_image):
+        """Detail report should include breadcrumb navigation."""
+        logger.debug("Testing detail report breadcrumb")
+
+        # Ensure directories exist
+        valid_config.diff_path.mkdir(parents=True, exist_ok=True)
+        valid_config.html_path.mkdir(parents=True, exist_ok=True)
+
+        # Create a subdirectory result
+        ui_dir = valid_config.new_path / "ui"
+        ui_dir.mkdir()
+        new_path = ui_dir / "test.png"
+        known_path = valid_config.known_good_path / "test.png"
+        diff_path = valid_config.diff_path / "diff_test.png"
+        annotated_path = valid_config.diff_path / "annotated_test.png"
+
+        simple_test_image.save(new_path)
+        simple_test_image.save(known_path)
+        simple_test_image.save(diff_path)
+        simple_test_image.save(annotated_path)
+
+        result = ComparisonResult(
+            filename="test.png",
+            new_image_path=new_path,
+            known_good_path=known_path,
+            diff_image_path=diff_path,
+            annotated_image_path=annotated_path,
+            metrics={},
+            percent_different=1.5,
+            histogram_data=""
+        )
+
+        generator = ReportGenerator(valid_config)
+        generator.generate_detail_report(result)
+
+        # Verify file was created
+        output_path = valid_config.html_path / "test.png.html"
+        assert output_path.exists()
+
+        # Verify breadcrumb navigation
+        content = output_path.read_text(encoding='utf-8')
+        assert "breadcrumb" in content
+        assert "Summary" in content
+        assert "ui" in content
+        assert "test.png" in content
+        assert "subdir_ui.html" in content  # Link back to subdirectory
+        assert "Back to Directory" in content
+
+        logger.info("✓ Detail report breadcrumb test passed")

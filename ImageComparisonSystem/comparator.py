@@ -233,23 +233,32 @@ class ImageComparator:
     def _generate_reports(self, results: List[ComparisonResult]):
         """Generate HTML and markdown reports for all results."""
         logger.info("Generating reports...")
-        
-        # Generate individual reports with full results list for navigation
-        for result in results:
-            self.report_generator.generate_detail_report(result, results)
-        
-        # Generate summary reports (HTML)
+
+        # Group results by subdirectory for hierarchical reporting
+        grouped = self.report_generator._group_by_subdirectory(results)
+
+        # Generate subdirectory index pages
+        for subdirectory, subdir_results in grouped.items():
+            self.report_generator.generate_subdirectory_index(subdirectory, subdir_results)
+
+        # Generate individual detail reports with subdirectory-specific navigation
+        for subdirectory, subdir_results in grouped.items():
+            for result in subdir_results:
+                # Pass only results from the same subdirectory for prev/next navigation
+                self.report_generator.generate_detail_report(result, subdir_results)
+
+        # Generate summary reports (HTML) - now shows subdirectories
         self.report_generator.generate_summary_report(results)
-        
+
         # Generate markdown summary for CI/CD pipeline integration
         markdown_exporter = MarkdownExporter(self.config.html_path)
         markdown_exporter.export_summary(results)
-        
+
         # Save results as JSON for potential later use
         json_path = self.config.html_path / 'results.json'
         try:
             with open(json_path, 'w') as f:
-                json.dump([r.to_dict() for r in results], f, indent=2)
+                json.dump([r.to_dict(self.config.new_path) for r in results], f, indent=2)
             logger.info("Saved results JSON: results.json")
         except Exception as e:
             logger.error(f"Error saving JSON results: {e}", exc_info=True)
