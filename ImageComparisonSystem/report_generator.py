@@ -665,6 +665,14 @@ class ReportGenerator:
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
+        .metrics h2 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 1.3em;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
         .metric-group {
             margin-bottom: 20px;
         }
@@ -772,6 +780,49 @@ class ReportGenerator:
             background: white;
             transform: scale(1.1);
         }
+        .nav-overlay {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.8);
+            color: #333;
+            border: none;
+            font-size: 32px;
+            width: 50px;
+            height: 50px;
+            border-radius: 4px;
+            cursor: pointer;
+            user-select: none;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            line-height: 1;
+            padding: 0;
+        }
+        #prev-btn {
+            left: 20px;
+        }
+        #next-btn {
+            right: 20px;
+        }
+        .nav-overlay:hover {
+            background: white;
+            transform: translateY(-50%) scale(1.1);
+        }
+        .overlay-counter {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -833,13 +884,66 @@ class ReportGenerator:
     
     <div class="overlay" id="overlay" onclick="hideOverlay()">
         <button class="close-overlay" onclick="hideOverlay(); event.stopPropagation();">×</button>
+        <button class="nav-overlay" id="prev-btn" onclick="previousImage(); event.stopPropagation();">‹</button>
+        <button class="nav-overlay" id="next-btn" onclick="nextImage(); event.stopPropagation();">›</button>
         <img id="overlay-img" src="" alt="Full size">
+        <div id="overlay-counter" class="overlay-counter"></div>
     </div>
     
     <script>
+        // Image navigation state
+        let overlayImages = [
+            '{{KNOWN_GOOD_IMAGE}}',
+            '{{NEW_IMAGE}}',
+            '{{DIFF_IMAGE}}',
+            '{{ANNOTATED_IMAGE}}'
+        ];
+        let overlayLabels = ['Known Good', 'New', 'Diff', 'Annotated'];
+        let currentImageIndex = 0;
+        
         function showOverlay(src) {
-            document.getElementById('overlay-img').src = src;
+            // Find the index of the clicked image
+            currentImageIndex = overlayImages.indexOf(src);
+            if (currentImageIndex === -1) {
+                currentImageIndex = 0;
+            }
+            updateOverlayImage();
             document.getElementById('overlay').classList.add('active');
+            updateNavigationButtons();
+        }
+        
+        function updateOverlayImage() {
+            const overlayImg = document.getElementById('overlay-img');
+            const counterDiv = document.getElementById('overlay-counter');
+            
+            overlayImg.src = overlayImages[currentImageIndex];
+            counterDiv.textContent = overlayLabels[currentImageIndex] + ' (' + (currentImageIndex + 1) + '/4)';
+        }
+        
+        function updateNavigationButtons() {
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            
+            // Show/hide prev button
+            prevBtn.style.display = currentImageIndex > 0 ? 'block' : 'none';
+            // Show/hide next button
+            nextBtn.style.display = currentImageIndex < overlayImages.length - 1 ? 'block' : 'none';
+        }
+        
+        function previousImage() {
+            if (currentImageIndex > 0) {
+                currentImageIndex--;
+                updateOverlayImage();
+                updateNavigationButtons();
+            }
+        }
+        
+        function nextImage() {
+            if (currentImageIndex < overlayImages.length - 1) {
+                currentImageIndex++;
+                updateOverlayImage();
+                updateNavigationButtons();
+            }
         }
         
         function hideOverlay() {
@@ -858,7 +962,12 @@ class ReportGenerator:
         }
         
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') hideOverlay();
+            const overlay = document.getElementById('overlay');
+            if (overlay.classList.contains('active')) {
+                if (e.key === 'Escape') hideOverlay();
+                if (e.key === 'ArrowLeft') previousImage();
+                if (e.key === 'ArrowRight') nextImage();
+            }
         });
     </script>
 </body>

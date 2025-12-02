@@ -676,3 +676,65 @@ class TestReportGenerator:
         assert "Back to Directory" in content
 
         logger.info("✓ Detail report breadcrumb test passed")
+
+    def test_detail_report_has_image_navigation(self, valid_config, simple_test_image):
+        """Detail report should include image navigation in overlay."""
+        logger.debug("Testing detail report image navigation")
+
+        # Ensure directories exist
+        valid_config.diff_path.mkdir(parents=True, exist_ok=True)
+        valid_config.html_path.mkdir(parents=True, exist_ok=True)
+
+        new_path = valid_config.new_path / "test.png"
+        known_path = valid_config.known_good_path / "test.png"
+        diff_path = valid_config.diff_path / "diff_test.png"
+        annotated_path = valid_config.diff_path / "annotated_test.png"
+
+        simple_test_image.save(new_path)
+        simple_test_image.save(known_path)
+        simple_test_image.save(diff_path)
+        simple_test_image.save(annotated_path)
+
+        result = ComparisonResult(
+            filename="test.png",
+            new_image_path=new_path,
+            known_good_path=known_path,
+            diff_image_path=diff_path,
+            annotated_image_path=annotated_path,
+            metrics={},
+            percent_different=1.5,
+            histogram_data=""
+        )
+
+        generator = ReportGenerator(valid_config)
+        generator.generate_detail_report(result)
+
+        output_path = valid_config.html_path / "test.png.html"
+        assert output_path.exists()
+
+        content = output_path.read_text(encoding='utf-8')
+
+        # Check for navigation button functionality
+        assert "previousImage()" in content
+        assert "nextImage()" in content
+        assert "overlayImages" in content
+        assert "overlayLabels" in content
+        assert "currentImageIndex" in content
+        
+        # Check for navigation button elements
+        assert "id=\"prev-btn\"" in content
+        assert "id=\"next-btn\"" in content
+        assert "id=\"overlay-counter\"" in content
+        
+        # Check for keyboard navigation
+        assert "ArrowLeft" in content
+        assert "ArrowRight" in content
+        
+        # Check for all image labels
+        assert "'Known Good'" in content
+        assert "'New'" in content
+        assert "'Diff'" in content
+        assert "'Annotated'" in content
+
+        logger.info("✓ Detail report image navigation test passed")
+

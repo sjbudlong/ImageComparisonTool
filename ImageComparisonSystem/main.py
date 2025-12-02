@@ -158,7 +158,18 @@ def parse_arguments() -> Optional[tuple]:
         default=None,
         help='Path to log file (optional, logs to console by default)'
     )
-    
+    parser.add_argument(
+        '--parallel',
+        action='store_true',
+        help='Enable parallel processing for faster comparisons'
+    )
+    parser.add_argument(
+        '--max-workers',
+        type=int,
+        default=None,
+        help='Maximum number of parallel workers (default: CPU count)'
+    )
+
     args = parser.parse_args()
     
     # If --gui flag is set, skip CLI mode and return None to trigger GUI
@@ -197,7 +208,9 @@ def parse_arguments() -> Optional[tuple]:
             min_contour_area=args.min_contour_area,
             use_histogram_equalization=use_hist_eq,
             highlight_color=highlight_color,
-            diff_enhancement_factor=args.diff_enhancement
+            diff_enhancement_factor=args.diff_enhancement,
+            enable_parallel=args.parallel,
+            max_workers=args.max_workers
         ), args)
 
 
@@ -266,10 +279,18 @@ def main():
     logger.info(f"New images: {config.new_dir}")
     logger.info(f"Known good images: {config.known_good_dir}")
     logger.info(f"Histogram equalization: {'enabled' if config.use_histogram_equalization else 'disabled'}")
+    logger.info(f"Parallel processing: {'enabled' if config.enable_parallel else 'disabled'}")
+    if config.enable_parallel:
+        logger.info(f"Max workers: {config.max_workers or 'CPU count'}")
     logger.info(f"Output will be saved to: {config.html_dir}")
-    
+
     comparator = ImageComparator(config)
-    results = comparator.compare_all()
+
+    # Use parallel or sequential processing based on config
+    if config.enable_parallel:
+        results = comparator.compare_all_parallel()
+    else:
+        results = comparator.compare_all()
     
     logger.info("Comparison complete!")
     logger.info(f"{len(results)} image pairs compared")

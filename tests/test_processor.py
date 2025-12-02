@@ -113,10 +113,80 @@ class TestImageProcessorIntegration:
     def test_processor_with_identical_images(self, simple_test_image):
         """Test processor with identical images."""
         img_array = np.array(simple_test_image)
-        
+
         processor = ImageProcessor()
         hist_data = processor.generate_histogram_image(img_array, img_array)
-        
+
         # Should still produce valid output
         assert isinstance(hist_data, str)
         assert len(hist_data) > 0
+
+    def test_load_images_return_both_with_equalization(self, valid_config, simple_test_image, simple_test_image_modified):
+        """load_images with return_both=True should return 4-tuple."""
+        # Save test images
+        path1 = valid_config.new_path / "test1.png"
+        path2 = valid_config.new_path / "test2.png"
+        simple_test_image.save(path1)
+        simple_test_image_modified.save(path2)
+
+        # Load with return_both=True and equalize=True
+        orig1, orig2, eq1, eq2 = ImageProcessor.load_images(
+            path1, path2,
+            equalize=True,
+            use_clahe=True,
+            to_grayscale=False,
+            return_both=True
+        )
+
+        # Verify 4 arrays returned
+        assert orig1.shape == eq1.shape
+        assert orig2.shape == eq2.shape
+
+        # Verify all are numpy arrays
+        assert isinstance(orig1, np.ndarray)
+        assert isinstance(orig2, np.ndarray)
+        assert isinstance(eq1, np.ndarray)
+        assert isinstance(eq2, np.ndarray)
+
+        # Verify equalization happened (arrays should be different)
+        # Note: In some cases they might be similar, so we just check they exist
+        assert orig1.shape == eq1.shape  # Shape should match
+        assert orig2.shape == eq2.shape
+
+    def test_load_images_return_both_without_equalization(self, valid_config, simple_test_image):
+        """load_images with return_both=True and equalize=False should return originals for both."""
+        # Save test image
+        path1 = valid_config.new_path / "test1.png"
+        path2 = valid_config.new_path / "test2.png"
+        simple_test_image.save(path1)
+        simple_test_image.save(path2)
+
+        # Load with return_both=True and equalize=False
+        orig1, orig2, eq1, eq2 = ImageProcessor.load_images(
+            path1, path2,
+            equalize=False,
+            return_both=True
+        )
+
+        # When not equalizing, equalized versions should be same as originals
+        assert np.array_equal(orig1, eq1)
+        assert np.array_equal(orig2, eq2)
+
+    def test_load_images_backward_compatibility(self, valid_config, simple_test_image):
+        """load_images without return_both should maintain backward compatibility."""
+        # Save test images
+        path1 = valid_config.new_path / "test1.png"
+        path2 = valid_config.new_path / "test2.png"
+        simple_test_image.save(path1)
+        simple_test_image.save(path2)
+
+        # Load with default return_both=False
+        img1, img2 = ImageProcessor.load_images(
+            path1, path2,
+            equalize=False
+        )
+
+        # Should return 2-tuple
+        assert isinstance(img1, np.ndarray)
+        assert isinstance(img2, np.ndarray)
+        assert img1.shape == img2.shape

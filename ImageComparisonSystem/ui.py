@@ -21,7 +21,7 @@ class ComparisonUI:
         self.config: Optional[Config] = None
         self.root = tk.Tk()
         self.root.title("Image Comparison Configuration")
-        self.root.geometry("750x700")
+        self.root.geometry("800x1000")
         self.root.resizable(True, True)
         
         self._create_widgets()
