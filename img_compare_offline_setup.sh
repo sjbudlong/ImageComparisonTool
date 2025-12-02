@@ -28,11 +28,11 @@ echo "------------------------------------------"
 
 # Download all dependencies with their dependencies
 pip download \
-    "Pillow>=10.0.0" \
-    "numpy>=1.24.0" \
-    "opencv-python>=4.8.0" \
-    "scikit-image>=0.21.0" \
-    "matplotlib>=3.7.0" \
+    "Pillow>=8.0.0,<12.0.0" \
+    "numpy>=1.19.0,<2.0.0" \
+    "opencv-python>=4.5.0" \
+    "scikit-image>=0.19.0" \
+    "matplotlib>=3.3.0" \
     --dest "$PACKAGE_DIR" \
     --python-version 3.8 \
     --platform manylinux2014_x86_64 \

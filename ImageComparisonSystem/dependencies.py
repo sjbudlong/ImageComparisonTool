@@ -37,37 +37,37 @@ class DependencyChecker:
         Dependency(
             package_name="Pillow",
             import_name="PIL",
-            min_version="10.0.0",
+            min_version="8.0.0",
             description="Image loading and manipulation",
-            pip_install="Pillow>=10.0.0"
+            pip_install="Pillow>=8.0.0,<12.0.0"
         ),
         Dependency(
             package_name="numpy",
             import_name="numpy",
-            min_version="1.24.0",
+            min_version="1.19.0",
             description="Array operations and numerical computing",
-            pip_install="numpy>=1.24.0"
+            pip_install="numpy>=1.19.0,<2.0.0"
         ),
         Dependency(
             package_name="opencv-python",
             import_name="cv2",
-            min_version="4.8.0",
+            min_version="4.5.0",
             description="Computer vision and image processing",
-            pip_install="opencv-python>=4.8.0"
+            pip_install="opencv-python>=4.5.0"
         ),
         Dependency(
             package_name="scikit-image",
             import_name="skimage",
-            min_version="0.21.0",
+            min_version="0.19.0",
             description="Image analysis and SSIM calculation",
-            pip_install="scikit-image>=0.21.0"
+            pip_install="scikit-image>=0.19.0"
         ),
         Dependency(
             package_name="matplotlib",
             import_name="matplotlib",
-            min_version="3.7.0",
+            min_version="3.3.0",
             description="Histogram visualization",
-            pip_install="matplotlib>=3.7.0"
+            pip_install="matplotlib>=3.3.0"
         ),
         Dependency(
             package_name="tkinter",
