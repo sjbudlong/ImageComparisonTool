@@ -104,7 +104,7 @@ class Config:
     """Contrast enhancement multiplier for difference visualization."""
 
     # Histogram visualization
-    histogram_config: HistogramConfig = None
+    histogram_config: Optional[HistogramConfig] = None
     """Configuration for histogram visualization."""
 
     # Parallel processing settings
