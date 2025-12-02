@@ -10,35 +10,14 @@ import logging
 from pathlib import Path
 from typing import Optional
 import webbrowser
-import os
+from config import Config
+from ui import ComparisonUI
+from comparator import ImageComparator
 
 # Setup logging as early as possible
 from logging_config import setup_logging, LOG_LEVELS
 
 logger = setup_logging(level=logging.INFO)
-
-# Check dependencies first before importing other modules
-try:
-    from dependencies import DependencyChecker
-
-    # Quick check for critical dependencies
-    # We'll do a full check later, but fail fast if major packages missing
-    try:
-        import numpy
-        import PIL
-        import cv2
-    except ImportError as e:
-        logger.critical(f"Critical dependency missing: {e}")
-        logger.info("Please install required packages. Run: python dependencies.py")
-        logger.info("For offline installation, see dependencies.py --help")
-        sys.exit(1)
-except ImportError:
-    logger.warning("dependency checker not available")
-    logger.warning("Continuing anyway, but errors may occur if packages are missing")
-
-from config import Config
-from ui import ComparisonUI
-from comparator import ImageComparator
 
 
 def parse_arguments() -> Optional[tuple]:
@@ -253,7 +232,7 @@ def main():
             from dependencies import DependencyChecker
 
             # Determine if GUI will be used
-            will_use_gui = "--gui" in sys.argv or not "--base-dir" in sys.argv
+            will_use_gui = "--gui" in sys.argv or "--base-dir" not in sys.argv
             DependencyChecker.check_and_exit_if_missing(skip_tkinter=not will_use_gui)
         except ImportError:
             pass  # Already warned in import section
@@ -302,7 +281,7 @@ def main():
     logger.info(f"{len(results)} image pairs compared")
     report_dir = config.base_dir / config.html_dir
     logger.info(f"Reports saved to: {report_dir}")
-    logger.info(f"Open 'summary.html' to view results")
+    logger.info("Open 'summary.html' to view results")
 
     # Open report in browser if --open-report flag was provided
     if open_report_flag and results:

@@ -329,14 +329,14 @@ class ReportGenerator:
             group_id = analyzer_name.lower().replace(" ", "-")
             description = self.METRIC_DESCRIPTIONS.get(analyzer_name, "")
 
-            html_parts.append(f'<div class="metric-group">')
+            html_parts.append('<div class="metric-group">')
             html_parts.append(
                 f'<div class="metric-header" onclick="toggleDescription(\'{group_id}\')">'
             )
             html_parts.append(f"<h3>{analyzer_name}</h3>")
             if description:
                 html_parts.append(
-                    f'<span class="metric-help-icon" title="Click to see description">?</span>'
+                    '<span class="metric-help-icon" title="Click to see description">?</span>'
                 )
             html_parts.append("</div>")
 

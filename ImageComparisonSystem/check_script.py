@@ -23,7 +23,7 @@ def check_python_version():
         print(
             f"✗ Python {current[0]}.{current[1]} does not meet requirement (>= {required[0]}.{required[1]})"
         )
-        print(f"  Please upgrade Python")
+        print("  Please upgrade Python")
         return False
 
 

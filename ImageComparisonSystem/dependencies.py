@@ -6,7 +6,7 @@ Validates all required packages are installed before running.
 import sys
 import logging
 import importlib.util
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, Tuple, Optional
 from dataclasses import dataclass
 
 logger = logging.getLogger("ImageComparison")
