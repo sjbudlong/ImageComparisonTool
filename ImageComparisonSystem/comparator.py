@@ -8,12 +8,22 @@ from typing import List, Dict, Any, Set, Iterator
 import json
 from concurrent.futures import ProcessPoolExecutor
 import os
-from config import Config
-from analyzers import AnalyzerRegistry
-from processor import ImageProcessor
-from report_generator import ReportGenerator
-from markdown_exporter import MarkdownExporter
-from models import ComparisonResult
+
+# Handle both package and direct module imports
+try:
+    from .config import Config
+    from .analyzers import AnalyzerRegistry
+    from .processor import ImageProcessor
+    from .report_generator import ReportGenerator
+    from .markdown_exporter import MarkdownExporter
+    from .models import ComparisonResult
+except ImportError:
+    from config import Config  # type: ignore
+    from analyzers import AnalyzerRegistry  # type: ignore
+    from processor import ImageProcessor  # type: ignore
+    from report_generator import ReportGenerator  # type: ignore
+    from markdown_exporter import MarkdownExporter  # type: ignore
+    from models import ComparisonResult  # type: ignore
 
 logger = logging.getLogger("ImageComparison")
 
@@ -219,9 +229,14 @@ class ImageComparator:
 
         # Reconstruct minimal objects needed for comparison
         # (Can't pickle the full comparator, so we recreate components)
-        from config import Config
-        from processor import ImageProcessor
-        from analyzers import AnalyzerRegistry
+        try:
+            from .config import Config
+            from .processor import ImageProcessor
+            from .analyzers import AnalyzerRegistry
+        except ImportError:
+            from config import Config  # type: ignore
+            from processor import ImageProcessor  # type: ignore
+            from analyzers import AnalyzerRegistry  # type: ignore
 
         try:
             # Reconstruct config from dict

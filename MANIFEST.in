@@ -1,0 +1,30 @@
+# Include documentation files
+include README.md
+include LICENSE.md
+include CHANGELOG.md
+include TESTING.md
+include QUICKSTART.md
+
+# Include configuration and setup files
+include pytest.ini
+include setup.py
+include setup.cfg
+include pyproject.toml
+
+# Include test files
+recursive-include tests *.py
+
+# Include batch files for testing
+recursive-include . *.bat *.sh
+
+# Exclude build artifacts
+global-exclude __pycache__
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.egg-info
+global-exclude .pytest_cache
+global-exclude .coverage
+global-exclude htmlcov
+
+# Include package data
+recursive-include ImageComparisonSystem *.py

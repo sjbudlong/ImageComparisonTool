@@ -9,7 +9,14 @@ from PIL import Image
 import numpy as np
 
 # Add ImageComparisonSystem to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "ImageComparisonSystem"))
+image_comp_system_path = str(Path(__file__).parent.parent / "ImageComparisonSystem")
+if image_comp_system_path not in sys.path:
+    sys.path.insert(0, image_comp_system_path)
+
+# Also add parent directory to allow ImageComparisonSystem package imports
+parent_path = str(Path(__file__).parent.parent)
+if parent_path not in sys.path:
+    sys.path.insert(0, parent_path)
 
 from config import Config
 from logging_config import setup_logging

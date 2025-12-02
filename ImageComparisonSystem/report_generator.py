@@ -8,8 +8,14 @@ image comparisons and summary pages showing all results.
 import logging
 from pathlib import Path
 from typing import List, Optional
-from config import Config
-from models import ComparisonResult
+
+# Handle both package and direct module imports
+try:
+    from .config import Config
+    from .models import ComparisonResult
+except ImportError:
+    from config import Config  # type: ignore
+    from models import ComparisonResult  # type: ignore
 
 logger = logging.getLogger("ImageComparison")
 

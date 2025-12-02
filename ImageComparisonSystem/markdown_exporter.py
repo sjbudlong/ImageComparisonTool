@@ -9,7 +9,12 @@ import logging
 from pathlib import Path
 from typing import List
 from datetime import datetime
-from models import ComparisonResult
+
+# Handle both package and direct module imports
+try:
+    from .models import ComparisonResult
+except ImportError:
+    from models import ComparisonResult  # type: ignore
 
 logger = logging.getLogger("ImageComparison")
 

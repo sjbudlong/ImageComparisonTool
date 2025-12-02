@@ -8,7 +8,12 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
 from typing import Optional, Tuple, Any
-from config import Config, HistogramConfig
+
+# Handle both package and direct module imports
+try:
+    from .config import Config, HistogramConfig
+except ImportError:
+    from config import Config, HistogramConfig  # type: ignore
 
 logger = logging.getLogger("ImageComparison")
 
