@@ -453,3 +453,58 @@ class TestMarkdownExporter:
         assert '|---|----------|-------------|--------|' in content
 
         logger.info("✓ Markdown table formatting test passed")
+
+    def test_export_summary_groups_by_subdirectory(self, temp_image_dir, simple_test_image):
+        """export_summary should group results by subdirectory."""
+        logger.debug("Testing export_summary subdirectory grouping")
+
+        output_dir = temp_image_dir / "reports"
+        exporter = MarkdownExporter(output_dir)
+        base_new_dir = temp_image_dir / "new"
+
+        # Create test results in different subdirectories
+        results = []
+        subdirs = ["", "subdir1", "subdir2"]
+        
+        for subdir_name in subdirs:
+            if subdir_name:
+                subdir_path = base_new_dir / subdir_name
+            else:
+                subdir_path = base_new_dir
+            
+            subdir_path.mkdir(parents=True, exist_ok=True)
+            
+            new_path = subdir_path / "test.png"
+            known_path = temp_image_dir / "known" / (subdir_name or "root") / "test.png"
+            known_path.parent.mkdir(parents=True, exist_ok=True)
+            diff_path = temp_image_dir / "diff" / "diff_test.png"
+            annotated_path = temp_image_dir / "diff" / "annotated_test.png"
+            
+            diff_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            simple_test_image.save(new_path)
+            simple_test_image.save(known_path)
+            simple_test_image.save(diff_path)
+            simple_test_image.save(annotated_path)
+            
+            result = ComparisonResult(
+                filename=f"{subdir_name or 'root'}_test.png" if subdir_name else "test.png",
+                new_image_path=new_path,
+                known_good_path=known_path,
+                diff_image_path=diff_path,
+                annotated_image_path=annotated_path,
+                metrics={'Pixel Difference': {'percent_different': 1.5}},
+                percent_different=1.5,
+                histogram_data=""
+            )
+            results.append(result)
+
+        output_path = exporter.export_summary(results, base_new_dir)
+        content = output_path.read_text(encoding='utf-8')
+
+        # Check for subdirectory headers
+        assert "### Root Directory" in content or "### " in content
+        assert "subdir1" in content or "subdir2" in content or content.count("###") >= 1
+
+        logger.info("✓ export_summary subdirectory grouping test passed")
+

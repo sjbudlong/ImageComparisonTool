@@ -26,7 +26,7 @@ class MarkdownExporter:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
     
-    def export_summary(self, results: List[ComparisonResult]) -> Path:
+    def export_summary(self, results: List[ComparisonResult], base_path: Path = None) -> Path:
         """Generate markdown summary report for CI/CD pipeline integration.
         
         Creates a markdown file suitable for:
@@ -36,9 +36,11 @@ class MarkdownExporter:
         - Email attachments
         
         The markdown format is pipeline-agnostic and parseable by various tools.
+        Detailed results are grouped by subdirectory structure.
         
         Args:
             results: List of comparison results
+            base_path: Optional base path for extracting subdirectories
             
         Returns:
             Path to generated markdown file
@@ -93,21 +95,39 @@ class MarkdownExporter:
                 "",
             ])
             
-            # Add results table with links to detail reports
+            # Add results grouped by subdirectory
             md_lines.extend([
                 "## Detailed Results",
                 "",
-                "| # | Filename | Difference % | Status | Details |",
-                "|---|----------|-------------|--------|---------|",
             ])
             
-            for idx, result in enumerate(results, 1):
-                status = self._get_status_text(result.percent_different)
-                status_emoji = self._get_status_emoji(status)
-                detail_link = f"[View →]({result.filename}.html)"
-                md_lines.append(
-                    f"| {idx} | `{result.filename}` | {result.percent_different:.4f}% | {status_emoji} {status} | {detail_link} |"
-                )
+            # Group results by subdirectory
+            grouped_results = self._group_results_by_subdirectory(results, base_path)
+            
+            # Add results for each subdirectory
+            for subdir, subdir_results in grouped_results:
+                # Add subdirectory header
+                if subdir:
+                    md_lines.append(f"### {subdir}")
+                else:
+                    md_lines.append("### Root Directory")
+                md_lines.append("")
+                
+                # Add results table for this subdirectory
+                md_lines.extend([
+                    "| # | Filename | Difference % | Status | Details |",
+                    "|---|----------|-------------|--------|---------|",
+                ])
+                
+                for idx, result in enumerate(subdir_results, 1):
+                    status = self._get_status_text(result.percent_different)
+                    status_emoji = self._get_status_emoji(status)
+                    detail_link = f"[View →]({result.filename}.html)"
+                    md_lines.append(
+                        f"| {idx} | `{result.filename}` | {result.percent_different:.4f}% | {status_emoji} {status} | {detail_link} |"
+                    )
+                
+                md_lines.append("")
             
             # Add footer with links and metadata
             md_lines.extend([
@@ -133,6 +153,36 @@ class MarkdownExporter:
         except Exception as e:
             logger.error(f"Error generating markdown summary: {e}", exc_info=True)
             raise
+    
+    def _group_results_by_subdirectory(self, results: List[ComparisonResult], base_path: Path = None) -> List[tuple]:
+        """Group comparison results by their subdirectory structure.
+        
+        Args:
+            results: List of comparison results
+            base_path: Optional base path for extracting subdirectories
+            
+        Returns:
+            List of tuples (subdirectory, results_in_subdir) sorted by subdirectory name
+        """
+        from collections import defaultdict
+        
+        grouped = defaultdict(list)
+        
+        for result in results:
+            if base_path:
+                subdir = result.get_subdirectory(base_path)
+            else:
+                # Try to extract subdirectory from filename path if available
+                subdir = ''
+                if hasattr(result, 'subdirectory'):
+                    subdir = result.subdirectory
+            
+            grouped[subdir].append(result)
+        
+        # Sort by subdirectory name, with root directory first
+        sorted_groups = sorted(grouped.items(), key=lambda x: (x[0] != '', x[0]))
+        
+        return sorted_groups
     
     @staticmethod
     def _get_status_text(percent_diff: float) -> str:

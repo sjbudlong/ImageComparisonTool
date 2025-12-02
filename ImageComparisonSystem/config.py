@@ -107,6 +107,12 @@ class Config:
     histogram_config: HistogramConfig = None
     """Configuration for histogram visualization."""
     
+    # Parallel processing settings
+    enable_parallel: bool = False
+    """Whether to use parallel processing for image comparisons."""
+    max_workers: int | None = None
+    """Maximum number of worker processes. None = use CPU count."""
+
     def __post_init__(self) -> None:
         """Convert string paths to Path objects and validate.
         

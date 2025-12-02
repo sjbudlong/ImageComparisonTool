@@ -179,55 +179,86 @@ class ImageProcessor:
         return img_base64
     
     @staticmethod
-    def load_images(path1: Path, path2: Path, 
+    def load_images(path1: Path, path2: Path,
                    equalize: bool = False,
                    use_clahe: bool = True,
-                   to_grayscale: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+                   to_grayscale: bool = False,
+                   return_both: bool = False) -> Tuple[np.ndarray, ...]:
         """
         Load two images and ensure they're the same size.
-        
+
+        PERFORMANCE FIX: Now supports returning both original and equalized versions
+        in a single load operation to eliminate duplicate I/O.
+
         Args:
             path1: Path to first image
             path2: Path to second image
             equalize: Whether to apply histogram equalization
             use_clahe: Whether to use CLAHE instead of standard equalization
             to_grayscale: Whether to convert to grayscale before equalization
-            
+            return_both: If True, returns 4-tuple (orig1, orig2, eq1, eq2).
+                        If False, returns 2-tuple (img1, img2) for backward compatibility.
+
         Returns:
-            Tuple of numpy arrays (img1, img2)
+            If return_both=True: Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+                (img1_original, img2_original, img1_equalized, img2_equalized)
+            If return_both=False: Tuple[np.ndarray, np.ndarray]
+                (img1, img2) - equalized if equalize=True, otherwise original
         """
         img1 = Image.open(path1)
         img2 = Image.open(path2)
-        
+
         # Convert to RGB if needed
         if img1.mode != 'RGB':
             img1 = img1.convert('RGB')
         if img2.mode != 'RGB':
             img2 = img2.convert('RGB')
-        
+
         # Resize if dimensions don't match
         if img1.size != img2.size:
             # Resize to the larger dimensions
             max_width = max(img1.width, img2.width)
             max_height = max(img1.height, img2.height)
-            
+
             if img1.size != (max_width, max_height):
                 img1 = img1.resize((max_width, max_height), Image.LANCZOS)
             if img2.size != (max_width, max_height):
                 img2 = img2.resize((max_width, max_height), Image.LANCZOS)
-        
-        # Convert to numpy
-        img1_np = np.array(img1)
-        img2_np = np.array(img2)
-        
-        # Apply histogram equalization if requested
-        if equalize:
-            logger.debug("Applying histogram equalization")
-            img1_np = ImageProcessor.equalize_histogram(img1_np, use_clahe=use_clahe, to_grayscale=to_grayscale)
-            img2_np = ImageProcessor.equalize_histogram(img2_np, use_clahe=use_clahe, to_grayscale=to_grayscale)
-        
-        logger.info(f"Images loaded successfully with shape {img1_np.shape}")
-        return img1_np, img2_np
+
+        # Convert to numpy - keep originals
+        img1_orig = np.array(img1)
+        img2_orig = np.array(img2)
+
+        # Handle different return modes
+        if return_both:
+            # Return both original and equalized versions
+            if equalize:
+                logger.debug("Applying histogram equalization (return_both mode)")
+                img1_eq = ImageProcessor.equalize_histogram(
+                    img1_orig.copy(),  # Important: copy to preserve original
+                    use_clahe=use_clahe,
+                    to_grayscale=to_grayscale
+                )
+                img2_eq = ImageProcessor.equalize_histogram(
+                    img2_orig.copy(),
+                    use_clahe=use_clahe,
+                    to_grayscale=to_grayscale
+                )
+            else:
+                # If not equalizing, equalized versions are same as originals
+                img1_eq, img2_eq = img1_orig, img2_orig
+
+            logger.info(f"Images loaded successfully with shape {img1_orig.shape} (return_both=True)")
+            return img1_orig, img2_orig, img1_eq, img2_eq
+        else:
+            # Backward compatibility mode: return 2-tuple
+            if equalize:
+                logger.debug("Applying histogram equalization")
+                img1_orig = ImageProcessor.equalize_histogram(img1_orig, use_clahe=use_clahe, to_grayscale=to_grayscale)
+                img2_orig = ImageProcessor.equalize_histogram(img2_orig, use_clahe=use_clahe, to_grayscale=to_grayscale)
+
+            logger.info(f"Images loaded successfully with shape {img1_orig.shape}")
+            return img1_orig, img2_orig
     
     @staticmethod
     def create_diff_image(img1: np.ndarray, img2: np.ndarray, 

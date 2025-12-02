@@ -384,3 +384,134 @@ class TestImageComparator:
         assert ImageComparator.IMAGE_EXTENSIONS == expected_extensions
 
         logger.info("✓ Image extensions test passed")
+
+    def test_compare_all_parallel_config_enabled(self, temp_image_dir, simple_test_image, simple_test_image_modified):
+        """When enable_parallel=True, should use parallel processing."""
+        logger.debug("Testing parallel processing with enable_parallel=True")
+
+        # Create test setup
+        new_dir = temp_image_dir / "new"
+        known_dir = temp_image_dir / "known_good"
+        new_dir.mkdir()
+        known_dir.mkdir()
+
+        simple_test_image_modified.save(new_dir / "test1.png")
+        simple_test_image.save(known_dir / "test1.png")
+        simple_test_image.save(new_dir / "test2.png")
+        simple_test_image.save(known_dir / "test2.png")
+
+        config = Config(
+            base_dir=temp_image_dir,
+            new_dir="new",
+            known_good_dir="known_good",
+            enable_parallel=True,
+            max_workers=2
+        )
+
+        comparator = ImageComparator(config)
+        results = comparator.compare_all_parallel()
+
+        # Should return list of results
+        assert isinstance(results, list)
+        assert len(results) == 2
+
+        # Results should be valid ComparisonResult objects
+        for result in results:
+            assert isinstance(result, ComparisonResult)
+            assert result.filename is not None
+
+        logger.info("✓ Parallel processing config test passed")
+
+    def test_compare_all_parallel_worker_function(self, valid_config, simple_test_image, simple_test_image_modified):
+        """_compare_pair_worker should process images correctly."""
+        logger.debug("Testing _compare_pair_worker static function")
+
+        # Save test images
+        new_path = valid_config.new_path / "test.png"
+        known_path = valid_config.known_good_path / "test.png"
+        simple_test_image_modified.save(new_path)
+        simple_test_image.save(known_path)
+
+        # Serialize config for worker
+        config_dict = {
+            'base_dir': valid_config.base_dir,
+            'new_dir': valid_config.new_dir,
+            'known_good_dir': valid_config.known_good_dir,
+            'diff_dir': valid_config.diff_dir,
+            'html_dir': valid_config.html_dir,
+            'pixel_diff_threshold': valid_config.pixel_diff_threshold,
+            'pixel_change_threshold': valid_config.pixel_change_threshold,
+            'ssim_threshold': valid_config.ssim_threshold,
+            'color_distance_threshold': valid_config.color_distance_threshold,
+            'min_contour_area': valid_config.min_contour_area,
+            'use_histogram_equalization': valid_config.use_histogram_equalization,
+            'use_clahe': valid_config.use_clahe,
+            'equalize_to_grayscale': valid_config.equalize_to_grayscale,
+            'highlight_color': valid_config.highlight_color,
+            'diff_enhancement_factor': valid_config.diff_enhancement_factor,
+        }
+
+        # Call worker function
+        result = ImageComparator._compare_pair_worker((config_dict, new_path, known_path))
+
+        # Verify result
+        assert result is not None
+        assert isinstance(result, ComparisonResult)
+        assert result.filename == "test.png"
+        assert result.diff_image_path.exists()
+        assert result.annotated_image_path.exists()
+
+        logger.info("✓ Worker function test passed")
+
+    def test_compare_all_parallel_vs_sequential_equivalence(self, temp_image_dir, simple_test_image, simple_test_image_modified):
+        """Parallel and sequential processing should produce equivalent results."""
+        logger.debug("Testing parallel vs sequential equivalence")
+
+        # Create test setup
+        new_dir = temp_image_dir / "new"
+        known_dir = temp_image_dir / "known_good"
+        new_dir.mkdir()
+        known_dir.mkdir()
+
+        simple_test_image_modified.save(new_dir / "test1.png")
+        simple_test_image.save(known_dir / "test1.png")
+        simple_test_image.save(new_dir / "test2.png")
+        simple_test_image.save(known_dir / "test2.png")
+
+        # Run sequential
+        config_seq = Config(
+            base_dir=temp_image_dir,
+            new_dir="new",
+            known_good_dir="known_good"
+        )
+        comparator_seq = ImageComparator(config_seq)
+        results_seq = comparator_seq.compare_all()
+
+        # Clean for parallel run
+        comparator_seq._clean_output_directories()
+
+        # Run parallel
+        config_par = Config(
+            base_dir=temp_image_dir,
+            new_dir="new",
+            known_good_dir="known_good",
+            enable_parallel=True,
+            max_workers=2
+        )
+        comparator_par = ImageComparator(config_par)
+        results_par = comparator_par.compare_all_parallel()
+
+        # Should have same number of results
+        assert len(results_seq) == len(results_par)
+
+        # Sort both by filename for comparison
+        seq_sorted = sorted(results_seq, key=lambda r: r.filename)
+        par_sorted = sorted(results_par, key=lambda r: r.filename)
+
+        # Should have same filenames and similar metrics
+        for s_result, p_result in zip(seq_sorted, par_sorted):
+            assert s_result.filename == p_result.filename
+            # Metrics should be very close (allow small floating point differences)
+            assert abs(s_result.percent_different - p_result.percent_different) < 0.01
+
+        logger.info("✓ Parallel vs sequential equivalence test passed")
