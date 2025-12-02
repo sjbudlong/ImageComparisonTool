@@ -32,13 +32,15 @@ class TestReportGenerator:
         """ReportGenerator should have metric descriptions."""
         logger.debug("Testing metric descriptions")
 
-        assert 'Pixel Difference' in ReportGenerator.METRIC_DESCRIPTIONS
-        assert 'Structural Similarity' in ReportGenerator.METRIC_DESCRIPTIONS
-        assert 'Histogram Analysis' in ReportGenerator.METRIC_DESCRIPTIONS
+        assert "Pixel Difference" in ReportGenerator.METRIC_DESCRIPTIONS
+        assert "Structural Similarity" in ReportGenerator.METRIC_DESCRIPTIONS
+        assert "Histogram Analysis" in ReportGenerator.METRIC_DESCRIPTIONS
 
         logger.info("✓ Metric descriptions test passed")
 
-    def test_generate_detail_report_creates_file(self, valid_config, simple_test_image, simple_test_image_modified):
+    def test_generate_detail_report_creates_file(
+        self, valid_config, simple_test_image, simple_test_image_modified
+    ):
         """generate_detail_report should create HTML file."""
         logger.debug("Testing detail report generation")
 
@@ -64,9 +66,9 @@ class TestReportGenerator:
             known_good_path=known_path,
             diff_image_path=diff_path,
             annotated_image_path=annotated_path,
-            metrics={'Pixel Difference': {'percent_different': 5.5}},
+            metrics={"Pixel Difference": {"percent_different": 5.5}},
             percent_different=5.5,
-            histogram_data="base64encodeddata"
+            histogram_data="base64encodeddata",
         )
 
         generator = ReportGenerator(valid_config)
@@ -77,13 +79,15 @@ class TestReportGenerator:
         assert output_path.exists()
 
         # Verify content
-        content = output_path.read_text(encoding='utf-8')
+        content = output_path.read_text(encoding="utf-8")
         assert "test.png" in content
         assert "5.5" in content
 
         logger.info("✓ Detail report generation test passed")
 
-    def test_generate_summary_report_creates_file(self, valid_config, simple_test_image):
+    def test_generate_summary_report_creates_file(
+        self, valid_config, simple_test_image
+    ):
         """generate_summary_report should create summary HTML with subdirectories."""
         logger.debug("Testing summary report generation")
 
@@ -110,9 +114,9 @@ class TestReportGenerator:
                 known_good_path=known_path,
                 diff_image_path=diff_path,
                 annotated_image_path=annotated_path,
-                metrics={'Pixel Difference': {'percent_different': i * 2.0}},
+                metrics={"Pixel Difference": {"percent_different": i * 2.0}},
                 percent_different=i * 2.0,
-                histogram_data=""
+                histogram_data="",
             )
             results.append(result)
 
@@ -124,7 +128,7 @@ class TestReportGenerator:
         assert output_path.exists()
 
         # Verify content - now shows subdirectories instead of individual files
-        content = output_path.read_text(encoding='utf-8')
+        content = output_path.read_text(encoding="utf-8")
         assert "Image Comparison Summary" in content
         assert "3" in content  # Total count
         assert "Ungrouped" in content  # Root-level files shown as "Ungrouped"
@@ -145,7 +149,7 @@ class TestReportGenerator:
 
         # Should be relative to html_path
         assert ".." in rel_path or "diffs" in rel_path
-        assert rel_path.replace('\\', '/').endswith('test.png')
+        assert rel_path.replace("\\", "/").endswith("test.png")
 
         logger.info("✓ Relative path calculation test passed")
 
@@ -156,24 +160,24 @@ class TestReportGenerator:
         generator = ReportGenerator(valid_config)
 
         metrics = {
-            'Pixel Difference': {
-                'percent_different': 5.5,
-                'changed_pixels': 1000,
-                'total_pixels': 10000
+            "Pixel Difference": {
+                "percent_different": 5.5,
+                "changed_pixels": 1000,
+                "total_pixels": 10000,
             },
-            'Structural Similarity': {
-                'ssim_score': 0.95,
-                'ssim_description': 'Very similar'
-            }
+            "Structural Similarity": {
+                "ssim_score": 0.95,
+                "ssim_description": "Very similar",
+            },
         }
 
         html = generator._format_metrics(metrics)
 
-        assert 'Pixel Difference' in html
-        assert 'Structural Similarity' in html
-        assert '5.5' in html
-        assert '0.95' in html
-        assert 'metric-group' in html
+        assert "Pixel Difference" in html
+        assert "Structural Similarity" in html
+        assert "5.5" in html
+        assert "0.95" in html
+        assert "metric-group" in html
 
         logger.info("✓ Metrics formatting test passed")
 
@@ -183,9 +187,9 @@ class TestReportGenerator:
 
         generator = ReportGenerator(valid_config)
 
-        assert generator._format_key('percent_different') == 'Percent Different'
-        assert generator._format_key('ssim_score') == 'Ssim Score'
-        assert generator._format_key('test_key_name') == 'Test Key Name'
+        assert generator._format_key("percent_different") == "Percent Different"
+        assert generator._format_key("ssim_score") == "Ssim Score"
+        assert generator._format_key("test_key_name") == "Test Key Name"
 
         logger.info("✓ Key formatting test passed")
 
@@ -196,13 +200,15 @@ class TestReportGenerator:
         generator = ReportGenerator(valid_config)
 
         # Test float formatting
-        assert generator._format_value(5.123456) == '5.1235'
-        assert generator._format_value(0.9999) == '0.9999'  # Fixed: actual output is 0.9999
+        assert generator._format_value(5.123456) == "5.1235"
+        assert (
+            generator._format_value(0.9999) == "0.9999"
+        )  # Fixed: actual output is 0.9999
 
         # Test other types
-        assert generator._format_value(100) == '100'
-        assert generator._format_value('test') == 'test'
-        assert generator._format_value((1, 2, 3)) == '(1, 2, 3)'
+        assert generator._format_value(100) == "100"
+        assert generator._format_value("test") == "test"
+        assert generator._format_value((1, 2, 3)) == "(1, 2, 3)"
 
         logger.info("✓ Value formatting test passed")
 
@@ -212,10 +218,10 @@ class TestReportGenerator:
 
         generator = ReportGenerator(valid_config)
 
-        assert generator._get_status_class(0.05) == 'status-identical'
-        assert generator._get_status_class(0.5) == 'status-minor'
-        assert generator._get_status_class(2.5) == 'status-moderate'
-        assert generator._get_status_class(10.0) == 'status-major'
+        assert generator._get_status_class(0.05) == "status-identical"
+        assert generator._get_status_class(0.5) == "status-minor"
+        assert generator._get_status_class(2.5) == "status-moderate"
+        assert generator._get_status_class(10.0) == "status-major"
 
         logger.info("✓ Status class test passed")
 
@@ -225,10 +231,10 @@ class TestReportGenerator:
 
         generator = ReportGenerator(valid_config)
 
-        assert generator._get_status_text(0.05) == 'Nearly Identical'
-        assert generator._get_status_text(0.5) == 'Minor Differences'
-        assert generator._get_status_text(2.5) == 'Moderate Differences'
-        assert generator._get_status_text(10.0) == 'Major Differences'
+        assert generator._get_status_text(0.05) == "Nearly Identical"
+        assert generator._get_status_text(0.5) == "Minor Differences"
+        assert generator._get_status_text(2.5) == "Moderate Differences"
+        assert generator._get_status_text(10.0) == "Major Differences"
 
         logger.info("✓ Status text test passed")
 
@@ -240,20 +246,20 @@ class TestReportGenerator:
         template = generator._get_html_template()
 
         # Check for expected placeholders
-        assert '{{TITLE}}' in template
-        assert '{{FILENAME}}' in template
-        assert '{{PERCENT_DIFF}}' in template
-        assert '{{NEW_IMAGE}}' in template
-        assert '{{KNOWN_GOOD_IMAGE}}' in template
-        assert '{{DIFF_IMAGE}}' in template
-        assert '{{ANNOTATED_IMAGE}}' in template
-        assert '{{METRICS}}' in template
-        assert '{{HISTOGRAM_DATA}}' in template
+        assert "{{TITLE}}" in template
+        assert "{{FILENAME}}" in template
+        assert "{{PERCENT_DIFF}}" in template
+        assert "{{NEW_IMAGE}}" in template
+        assert "{{KNOWN_GOOD_IMAGE}}" in template
+        assert "{{DIFF_IMAGE}}" in template
+        assert "{{ANNOTATED_IMAGE}}" in template
+        assert "{{METRICS}}" in template
+        assert "{{HISTOGRAM_DATA}}" in template
 
         # Check for valid HTML
-        assert '<!DOCTYPE html>' in template
-        assert '<html' in template
-        assert '</html>' in template
+        assert "<!DOCTYPE html>" in template
+        assert "<html" in template
+        assert "</html>" in template
 
         logger.info("✓ HTML template test passed")
 
@@ -264,10 +270,10 @@ class TestReportGenerator:
         generator = ReportGenerator(valid_config)
         template = generator._get_summary_template()
 
-        assert '{{TOTAL_COUNT}}' in template
-        assert '{{ROWS}}' in template
-        assert '<!DOCTYPE html>' in template
-        assert 'Image Comparison Summary' in template
+        assert "{{TOTAL_COUNT}}" in template
+        assert "{{ROWS}}" in template
+        assert "<!DOCTYPE html>" in template
+        assert "Image Comparison Summary" in template
 
         logger.info("✓ Summary template test passed")
 
@@ -298,9 +304,9 @@ class TestReportGenerator:
                 known_good_path=known_path,
                 diff_image_path=diff_path,
                 annotated_image_path=annotated_path,
-                metrics={'Pixel Difference': {'percent_different': 1.0}},
+                metrics={"Pixel Difference": {"percent_different": 1.0}},
                 percent_different=1.0,
-                histogram_data=""
+                histogram_data="",
             )
             results.append(result)
 
@@ -311,11 +317,11 @@ class TestReportGenerator:
 
         # Check the generated HTML
         output_path = valid_config.html_path / "test1.png.html"
-        content = output_path.read_text(encoding='utf-8')
+        content = output_path.read_text(encoding="utf-8")
 
         # Should have previous and next links
-        assert 'test0.png.html' in content  # Previous
-        assert 'test2.png.html' in content  # Next
+        assert "test0.png.html" in content  # Previous
+        assert "test2.png.html" in content  # Next
 
         logger.info("✓ Navigation links test passed")
 
@@ -343,21 +349,21 @@ class TestReportGenerator:
             known_good_path=known_path,
             diff_image_path=diff_path,
             annotated_image_path=annotated_path,
-            metrics={'Pixel Difference': {'percent_different': 1.0}},
+            metrics={"Pixel Difference": {"percent_different": 1.0}},
             percent_different=1.0,
-            histogram_data=""
+            histogram_data="",
         )
 
         generator = ReportGenerator(valid_config)
         generator.generate_detail_report(result, [result])
 
         output_path = valid_config.html_path / "single.png.html"
-        content = output_path.read_text(encoding='utf-8')
+        content = output_path.read_text(encoding="utf-8")
 
         # Should have Back to Summary link but no prev/next
-        assert 'summary.html' in content
+        assert "summary.html" in content
         # Navigation buttons for single result should be minimal
-        assert content.count('← Previous') == 0 or content.count('Next →') == 0
+        assert content.count("← Previous") == 0 or content.count("Next →") == 0
 
         logger.info("✓ Detail report without navigation test passed")
 
@@ -367,20 +373,20 @@ class TestReportGenerator:
 
         generator = ReportGenerator(valid_config)
 
-        metrics = {
-            'Pixel Difference': {'percent_different': 5.0}
-        }
+        metrics = {"Pixel Difference": {"percent_different": 5.0}}
 
         html = generator._format_metrics(metrics)
 
         # Should have description functionality
-        assert 'metric-description' in html
-        assert 'toggleDescription' in html
-        assert 'pixel-difference' in html  # Group ID
+        assert "metric-description" in html
+        assert "toggleDescription" in html
+        assert "pixel-difference" in html  # Group ID
 
         logger.info("✓ Metrics with descriptions test passed")
 
-    def test_report_handles_missing_histogram_data(self, valid_config, simple_test_image):
+    def test_report_handles_missing_histogram_data(
+        self, valid_config, simple_test_image
+    ):
         """Report should handle missing histogram data gracefully."""
         logger.debug("Testing report with missing histogram data")
 
@@ -404,9 +410,9 @@ class TestReportGenerator:
             known_good_path=known_path,
             diff_image_path=diff_path,
             annotated_image_path=annotated_path,
-            metrics={'Pixel Difference': {'percent_different': 1.0}},
+            metrics={"Pixel Difference": {"percent_different": 1.0}},
             percent_different=1.0,
-            histogram_data=None  # No histogram
+            histogram_data=None,  # No histogram
         )
 
         generator = ReportGenerator(valid_config)
@@ -428,16 +434,18 @@ class TestReportGenerator:
         # Root level image
         root_path = valid_config.new_path / "root.png"
         simple_test_image.save(root_path)
-        results.append(ComparisonResult(
-            filename="root.png",
-            new_image_path=root_path,
-            known_good_path=Path("/known.png"),
-            diff_image_path=Path("/diff.png"),
-            annotated_image_path=Path("/annotated.png"),
-            metrics={},
-            percent_different=1.0,
-            histogram_data=""
-        ))
+        results.append(
+            ComparisonResult(
+                filename="root.png",
+                new_image_path=root_path,
+                known_good_path=Path("/known.png"),
+                diff_image_path=Path("/diff.png"),
+                annotated_image_path=Path("/annotated.png"),
+                metrics={},
+                percent_different=1.0,
+                histogram_data="",
+            )
+        )
 
         # Subdirectory images
         ui_dir = valid_config.new_path / "ui"
@@ -445,16 +453,18 @@ class TestReportGenerator:
         for i in range(2):
             ui_path = ui_dir / f"ui{i}.png"
             simple_test_image.save(ui_path)
-            results.append(ComparisonResult(
-                filename=f"ui{i}.png",
-                new_image_path=ui_path,
-                known_good_path=Path("/known.png"),
-                diff_image_path=Path("/diff.png"),
-                annotated_image_path=Path("/annotated.png"),
-                metrics={},
-                percent_different=float(i),
-                histogram_data=""
-            ))
+            results.append(
+                ComparisonResult(
+                    filename=f"ui{i}.png",
+                    new_image_path=ui_path,
+                    known_good_path=Path("/known.png"),
+                    diff_image_path=Path("/diff.png"),
+                    annotated_image_path=Path("/annotated.png"),
+                    metrics={},
+                    percent_different=float(i),
+                    histogram_data="",
+                )
+            )
 
         generator = ReportGenerator(valid_config)
         grouped = generator._group_by_subdirectory(results)
@@ -495,16 +505,18 @@ class TestReportGenerator:
             simple_test_image.save(diff_path)
             simple_test_image.save(annotated_path)
 
-            results.append(ComparisonResult(
-                filename=f"test{i}.png",
-                new_image_path=new_path,
-                known_good_path=known_path,
-                diff_image_path=diff_path,
-                annotated_image_path=annotated_path,
-                metrics={},
-                percent_different=float(i),
-                histogram_data=""
-            ))
+            results.append(
+                ComparisonResult(
+                    filename=f"test{i}.png",
+                    new_image_path=new_path,
+                    known_good_path=known_path,
+                    diff_image_path=diff_path,
+                    annotated_image_path=annotated_path,
+                    metrics={},
+                    percent_different=float(i),
+                    histogram_data="",
+                )
+            )
 
         generator = ReportGenerator(valid_config)
         generator.generate_subdirectory_index("ui", results)
@@ -514,7 +526,7 @@ class TestReportGenerator:
         assert output_path.exists()
 
         # Verify content
-        content = output_path.read_text(encoding='utf-8')
+        content = output_path.read_text(encoding="utf-8")
         assert "ui" in content
         assert "test0.png" in content
         assert "test1.png" in content
@@ -550,7 +562,7 @@ class TestReportGenerator:
             annotated_image_path=annotated_path,
             metrics={},
             percent_different=1.0,
-            histogram_data=""
+            histogram_data="",
         )
 
         generator = ReportGenerator(valid_config)
@@ -561,7 +573,7 @@ class TestReportGenerator:
         assert output_path.exists()
 
         # Verify content shows "Ungrouped"
-        content = output_path.read_text(encoding='utf-8')
+        content = output_path.read_text(encoding="utf-8")
         assert "Ungrouped" in content
         assert "root.png" in content
 
@@ -581,16 +593,18 @@ class TestReportGenerator:
         # Root level
         root_path = valid_config.new_path / "root.png"
         simple_test_image.save(root_path)
-        results.append(ComparisonResult(
-            filename="root.png",
-            new_image_path=root_path,
-            known_good_path=Path("/known.png"),
-            diff_image_path=Path("/diff.png"),
-            annotated_image_path=Path("/annotated.png"),
-            metrics={},
-            percent_different=1.0,
-            histogram_data=""
-        ))
+        results.append(
+            ComparisonResult(
+                filename="root.png",
+                new_image_path=root_path,
+                known_good_path=Path("/known.png"),
+                diff_image_path=Path("/diff.png"),
+                annotated_image_path=Path("/annotated.png"),
+                metrics={},
+                percent_different=1.0,
+                histogram_data="",
+            )
+        )
 
         # UI subdirectory
         ui_dir = valid_config.new_path / "ui"
@@ -598,16 +612,18 @@ class TestReportGenerator:
         for i in range(2):
             ui_path = ui_dir / f"ui{i}.png"
             simple_test_image.save(ui_path)
-            results.append(ComparisonResult(
-                filename=f"ui{i}.png",
-                new_image_path=ui_path,
-                known_good_path=Path("/known.png"),
-                diff_image_path=Path("/diff.png"),
-                annotated_image_path=Path("/annotated.png"),
-                metrics={},
-                percent_different=2.0 + i,
-                histogram_data=""
-            ))
+            results.append(
+                ComparisonResult(
+                    filename=f"ui{i}.png",
+                    new_image_path=ui_path,
+                    known_good_path=Path("/known.png"),
+                    diff_image_path=Path("/diff.png"),
+                    annotated_image_path=Path("/annotated.png"),
+                    metrics={},
+                    percent_different=2.0 + i,
+                    histogram_data="",
+                )
+            )
 
         generator = ReportGenerator(valid_config)
         generator.generate_summary_report(results)
@@ -617,7 +633,7 @@ class TestReportGenerator:
         assert output_path.exists()
 
         # Verify content shows subdirectories
-        content = output_path.read_text(encoding='utf-8')
+        content = output_path.read_text(encoding="utf-8")
         assert "Ungrouped" in content  # Root level
         assert "ui" in content  # Subdirectory
         assert "Directory" in content  # Column header
@@ -656,7 +672,7 @@ class TestReportGenerator:
             annotated_image_path=annotated_path,
             metrics={},
             percent_different=1.5,
-            histogram_data=""
+            histogram_data="",
         )
 
         generator = ReportGenerator(valid_config)
@@ -667,7 +683,7 @@ class TestReportGenerator:
         assert output_path.exists()
 
         # Verify breadcrumb navigation
-        content = output_path.read_text(encoding='utf-8')
+        content = output_path.read_text(encoding="utf-8")
         assert "breadcrumb" in content
         assert "Summary" in content
         assert "ui" in content
@@ -703,7 +719,7 @@ class TestReportGenerator:
             annotated_image_path=annotated_path,
             metrics={},
             percent_different=1.5,
-            histogram_data=""
+            histogram_data="",
         )
 
         generator = ReportGenerator(valid_config)
@@ -712,7 +728,7 @@ class TestReportGenerator:
         output_path = valid_config.html_path / "test.png.html"
         assert output_path.exists()
 
-        content = output_path.read_text(encoding='utf-8')
+        content = output_path.read_text(encoding="utf-8")
 
         # Check for navigation button functionality
         assert "previousImage()" in content
@@ -720,16 +736,16 @@ class TestReportGenerator:
         assert "overlayImages" in content
         assert "overlayLabels" in content
         assert "currentImageIndex" in content
-        
+
         # Check for navigation button elements
-        assert "id=\"prev-btn\"" in content
-        assert "id=\"next-btn\"" in content
-        assert "id=\"overlay-counter\"" in content
-        
+        assert 'id="prev-btn"' in content
+        assert 'id="next-btn"' in content
+        assert 'id="overlay-counter"' in content
+
         # Check for keyboard navigation
         assert "ArrowLeft" in content
         assert "ArrowRight" in content
-        
+
         # Check for all image labels
         assert "'Known Good'" in content
         assert "'New'" in content
@@ -737,4 +753,3 @@ class TestReportGenerator:
         assert "'Annotated'" in content
 
         logger.info("✓ Detail report image navigation test passed")
-

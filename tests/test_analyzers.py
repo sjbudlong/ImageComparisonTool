@@ -12,7 +12,7 @@ from analyzers import (
     ColorDifferenceAnalyzer,
     DimensionAnalyzer,
     HistogramAnalyzer,
-    AnalyzerRegistry
+    AnalyzerRegistry,
 )
 from config import Config
 
@@ -37,10 +37,10 @@ class TestPixelDifferenceAnalyzer:
 
         result = analyzer.analyze(img, img)
 
-        assert result['percent_different'] == 0.0
-        assert result['changed_pixels'] == 0
-        assert result['mean_absolute_error'] == 0.0
-        assert result['max_difference'] == 0.0
+        assert result["percent_different"] == 0.0
+        assert result["changed_pixels"] == 0
+        assert result["mean_absolute_error"] == 0.0
+        assert result["max_difference"] == 0.0
 
         logger.info("✓ PixelDifferenceAnalyzer identical images test passed")
 
@@ -54,9 +54,9 @@ class TestPixelDifferenceAnalyzer:
         analyzer = PixelDifferenceAnalyzer(threshold=1)
         result = analyzer.analyze(img1, img2)
 
-        assert result['percent_different'] == 100.0
-        assert result['changed_pixels'] == img1.size
-        assert result['max_difference'] == 255.0
+        assert result["percent_different"] == 100.0
+        assert result["changed_pixels"] == img1.size
+        assert result["max_difference"] == 255.0
 
         logger.info("✓ PixelDifferenceAnalyzer completely different images test passed")
 
@@ -76,8 +76,8 @@ class TestPixelDifferenceAnalyzer:
         analyzer_loose = PixelDifferenceAnalyzer(threshold=0)
         result_loose = analyzer_loose.analyze(img1, img2)
 
-        assert result_strict['percent_different'] == 0.0
-        assert result_loose['percent_different'] == 100.0
+        assert result_strict["percent_different"] == 0.0
+        assert result_loose["percent_different"] == 100.0
 
         logger.info("✓ PixelDifferenceAnalyzer threshold application test passed")
 
@@ -91,7 +91,7 @@ class TestPixelDifferenceAnalyzer:
         analyzer = PixelDifferenceAnalyzer()
         result = analyzer.analyze(img1, img2)
 
-        assert result['mean_absolute_error'] == 10.0
+        assert result["mean_absolute_error"] == 10.0
 
         logger.info("✓ PixelDifferenceAnalyzer MAE test passed")
 
@@ -114,9 +114,9 @@ class TestStructuralSimilarityAnalyzer:
 
         result = analyzer.analyze(img, img)
 
-        assert result['ssim_score'] == 1.0
-        assert result['ssim_percentage'] == 0.0
-        assert result['ssim_description'] == "Nearly identical"
+        assert result["ssim_score"] == 1.0
+        assert result["ssim_percentage"] == 0.0
+        assert result["ssim_description"] == "Nearly identical"
 
         logger.info("✓ SSIM identical images test passed")
 
@@ -130,8 +130,8 @@ class TestStructuralSimilarityAnalyzer:
         analyzer = StructuralSimilarityAnalyzer()
         result = analyzer.analyze(img1, img2)
 
-        assert result['ssim_score'] < 1.0
-        assert result['ssim_percentage'] > 0.0
+        assert result["ssim_score"] < 1.0
+        assert result["ssim_percentage"] > 0.0
 
         logger.info("✓ SSIM different images test passed")
 
@@ -145,7 +145,7 @@ class TestStructuralSimilarityAnalyzer:
         analyzer = StructuralSimilarityAnalyzer()
         result = analyzer.analyze(img1, img2)
 
-        assert result['ssim_score'] == 1.0
+        assert result["ssim_score"] == 1.0
 
         logger.info("✓ SSIM color image conversion test passed")
 
@@ -185,8 +185,8 @@ class TestColorDifferenceAnalyzer:
         analyzer = ColorDifferenceAnalyzer()
         result = analyzer.analyze(img1, img2)
 
-        assert result['grayscale'] is True
-        assert 'message' in result
+        assert result["grayscale"] is True
+        assert "message" in result
 
         logger.info("✓ ColorDifferenceAnalyzer grayscale detection test passed")
 
@@ -202,11 +202,11 @@ class TestColorDifferenceAnalyzer:
         analyzer = ColorDifferenceAnalyzer()
         result = analyzer.analyze(img1, img2)
 
-        assert result['grayscale'] is False
-        assert result['red_mean_diff'] == 50.0
-        assert result['green_mean_diff'] == 0.0
-        assert result['blue_mean_diff'] == 0.0
-        assert result['red_max_diff'] == 50.0
+        assert result["grayscale"] is False
+        assert result["red_mean_diff"] == 50.0
+        assert result["green_mean_diff"] == 0.0
+        assert result["blue_mean_diff"] == 0.0
+        assert result["red_max_diff"] == 50.0
 
         logger.info("✓ ColorDifferenceAnalyzer channel differences test passed")
 
@@ -223,8 +223,8 @@ class TestColorDifferenceAnalyzer:
         analyzer = ColorDifferenceAnalyzer()
         result = analyzer.analyze(img1, img2)
 
-        assert result['mean_color_distance'] == 5.0
-        assert result['max_color_distance'] == 5.0
+        assert result["mean_color_distance"] == 5.0
+        assert result["max_color_distance"] == 5.0
 
         logger.info("✓ ColorDifferenceAnalyzer color distance test passed")
 
@@ -240,9 +240,9 @@ class TestColorDifferenceAnalyzer:
         analyzer = ColorDifferenceAnalyzer(distance_threshold=10.0)
         result = analyzer.analyze(img1, img2)
 
-        assert result['significant_change_percent'] == 25.0
-        assert result['significant_color_changes'] == 2500  # 50*50
-        assert result['threshold_used'] == 10.0
+        assert result["significant_change_percent"] == 25.0
+        assert result["significant_color_changes"] == 2500  # 50*50
+        assert result["threshold_used"] == 10.0
 
         logger.info("✓ ColorDifferenceAnalyzer threshold test passed")
 
@@ -266,9 +266,9 @@ class TestDimensionAnalyzer:
         analyzer = DimensionAnalyzer()
         result = analyzer.analyze(img1, img2)
 
-        assert result['shapes_match'] is True
-        assert result['img1_size'] == "200x100"
-        assert result['img2_size'] == "200x100"
+        assert result["shapes_match"] is True
+        assert result["img1_size"] == "200x100"
+        assert result["img2_size"] == "200x100"
 
         logger.info("✓ DimensionAnalyzer matching dimensions test passed")
 
@@ -282,9 +282,9 @@ class TestDimensionAnalyzer:
         analyzer = DimensionAnalyzer()
         result = analyzer.analyze(img1, img2)
 
-        assert result['shapes_match'] is False
-        assert result['img1_size'] == "200x100"
-        assert result['img2_size'] == "250x150"
+        assert result["shapes_match"] is False
+        assert result["img1_size"] == "200x100"
+        assert result["img2_size"] == "250x150"
 
         logger.info("✓ DimensionAnalyzer mismatched dimensions test passed")
 
@@ -307,12 +307,12 @@ class TestHistogramAnalyzer:
         analyzer = HistogramAnalyzer()
         result = analyzer.analyze(img, img)
 
-        assert result['red_histogram_correlation'] == 1.0
-        assert result['green_histogram_correlation'] == 1.0
-        assert result['blue_histogram_correlation'] == 1.0
-        assert result['red_histogram_chi_square'] == 0.0
-        assert result['green_histogram_chi_square'] == 0.0
-        assert result['blue_histogram_chi_square'] == 0.0
+        assert result["red_histogram_correlation"] == 1.0
+        assert result["green_histogram_correlation"] == 1.0
+        assert result["blue_histogram_correlation"] == 1.0
+        assert result["red_histogram_chi_square"] == 0.0
+        assert result["green_histogram_chi_square"] == 0.0
+        assert result["blue_histogram_chi_square"] == 0.0
 
         logger.info("✓ HistogramAnalyzer identical color images test passed")
 
@@ -325,8 +325,8 @@ class TestHistogramAnalyzer:
         analyzer = HistogramAnalyzer()
         result = analyzer.analyze(img, img)
 
-        assert result['histogram_correlation'] == 1.0
-        assert result['histogram_chi_square'] == 0.0
+        assert result["histogram_correlation"] == 1.0
+        assert result["histogram_chi_square"] == 0.0
 
         logger.info("✓ HistogramAnalyzer identical grayscale images test passed")
 
@@ -341,10 +341,10 @@ class TestHistogramAnalyzer:
         result = analyzer.analyze(img1, img2)
 
         # Should have some correlation metrics
-        assert 'red_histogram_correlation' in result
-        assert 'green_histogram_correlation' in result
-        assert 'blue_histogram_correlation' in result
-        assert 'red_histogram_chi_square' in result
+        assert "red_histogram_correlation" in result
+        assert "green_histogram_correlation" in result
+        assert "blue_histogram_correlation" in result
+        assert "red_histogram_chi_square" in result
 
         logger.info("✓ HistogramAnalyzer different color images test passed")
 
@@ -361,12 +361,12 @@ class TestHistogramAnalyzer:
         color_result = analyzer.analyze(color_img, color_img)
 
         # Grayscale should have simple keys
-        assert 'histogram_correlation' in gray_result
-        assert 'red_histogram_correlation' not in gray_result
+        assert "histogram_correlation" in gray_result
+        assert "red_histogram_correlation" not in gray_result
 
         # Color should have channel-specific keys
-        assert 'red_histogram_correlation' in color_result
-        assert 'histogram_correlation' not in color_result
+        assert "red_histogram_correlation" in color_result
+        assert "histogram_correlation" not in color_result
 
         logger.info("✓ HistogramAnalyzer output structure test passed")
 
@@ -470,7 +470,7 @@ class TestAnalyzerRegistry:
 
         # Error analyzer should have an error in results
         assert "Error Analyzer" in results
-        assert 'error' in results["Error Analyzer"]
+        assert "error" in results["Error Analyzer"]
 
         logger.info("✓ analyze_all error handling test passed")
 
@@ -487,21 +487,21 @@ class TestAnalyzerRegistry:
 
         # Verify Pixel Difference result structure
         pixel_result = results["Pixel Difference"]
-        assert 'percent_different' in pixel_result
-        assert 'changed_pixels' in pixel_result
-        assert 'total_pixels' in pixel_result
-        assert 'mean_absolute_error' in pixel_result
+        assert "percent_different" in pixel_result
+        assert "changed_pixels" in pixel_result
+        assert "total_pixels" in pixel_result
+        assert "mean_absolute_error" in pixel_result
 
         # Verify SSIM result structure
         ssim_result = results["Structural Similarity"]
-        assert 'ssim_score' in ssim_result
-        assert 'ssim_percentage' in ssim_result
-        assert 'ssim_description' in ssim_result
+        assert "ssim_score" in ssim_result
+        assert "ssim_percentage" in ssim_result
+        assert "ssim_description" in ssim_result
 
         # Verify Dimensions result structure
         dim_result = results["Dimensions"]
-        assert 'shapes_match' in dim_result
-        assert 'img1_size' in dim_result
-        assert 'img2_size' in dim_result
+        assert "shapes_match" in dim_result
+        assert "img1_size" in dim_result
+        assert "img2_size" in dim_result
 
         logger.info("✓ Analyzer results structure test passed")

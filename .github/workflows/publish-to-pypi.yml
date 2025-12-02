@@ -11,8 +11,8 @@ on:
         default: 'testpypi'
         type: choice
         options:
-          - testpypi
-          - pypi
+          - 'testpypi'
+          - 'pypi'
 
 jobs:
   build:
@@ -55,7 +55,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'testpypi'
     
     environment:
-      name: testpypi
+      name: 'testpypi'
       url: https://test.pypi.org/p/image-comparison-system
     
     permissions:
@@ -80,7 +80,7 @@ jobs:
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'pypi')
     
     environment:
-      name: pypi
+      name: 'pypi'
       url: https://pypi.org/p/image-comparison-system
     
     permissions:

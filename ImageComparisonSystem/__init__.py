@@ -1,9 +1,9 @@
 """
 Image Comparison System - Advanced image comparison and analysis tool.
 
-A modular Python system for comparing images and generating detailed HTML reports
-with visual diffs. Perfect for 3D rendering validation, visual regression testing,
-and quality assurance workflows.
+A modular Python system for comparing images and generating detailed HTML
+reports with visual diffs. Perfect for 3D rendering validation,
+visual regression testing, and quality assurance workflows.
 
 Version: 1.0.0
 License: MIT
