@@ -4,7 +4,7 @@ Main comparator module that orchestrates image comparison workflow.
 
 import logging
 from pathlib import Path
-from typing import List, Dict, Any, Set, Iterator
+from typing import List, Dict, Any, Set, Iterator, Optional
 import json
 from concurrent.futures import ProcessPoolExecutor
 import os
@@ -169,7 +169,7 @@ class ImageComparator:
         return sorted(list(images))
 
     def _find_matching_known_good(self, new_img_path: Path,
-                                  known_index: Dict[str, List[Path]]) -> Path | None:
+                                  known_index: Dict[str, List[Path]]) -> Optional[Path]:
         """
         Find the matching known good image for a new image.
 
@@ -209,7 +209,7 @@ class ImageComparator:
         return None
 
     @staticmethod
-    def _compare_pair_worker(args: tuple) -> ComparisonResult | None:
+    def _compare_pair_worker(args: tuple) -> Optional[ComparisonResult]:
         """
         Static worker function for parallel processing.
 

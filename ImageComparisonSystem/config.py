@@ -7,7 +7,7 @@ including paths, tolerances, and visual settings.
 
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Tuple, Optional
 
 
 @dataclass
@@ -110,7 +110,7 @@ class Config:
     # Parallel processing settings
     enable_parallel: bool = False
     """Whether to use parallel processing for image comparisons."""
-    max_workers: int | None = None
+    max_workers: Optional[int] = None
     """Maximum number of worker processes. None = use CPU count."""
 
     def __post_init__(self) -> None:
