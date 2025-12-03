@@ -1,15 +1,15 @@
 # Image Comparison Tool Requirements
 
 # Core image processing
-Pillow>=10.0.0
-numpy>=1.24.0
-opencv-python>=4.8.0
+Pillow>=8.0.0,<12.0.0
+numpy>=1.19.0,<2.0.0
+opencv-python>=4.5.0
 
 # Image analysis
-scikit-image>=0.21.0
+scikit-image>=0.19.0
 
 # Histogram visualization
-matplotlib>=3.7.0
+matplotlib>=3.3.0
 
 # GUI (optional - only needed if not using CLI)
 # tkinter comes with Python standard library

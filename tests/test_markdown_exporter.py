@@ -57,9 +57,9 @@ class TestMarkdownExporter:
             known_good_path=known_path,
             diff_image_path=diff_path,
             annotated_image_path=annotated_path,
-            metrics={'Pixel Difference': {'percent_different': 2.5}},
+            metrics={"Pixel Difference": {"percent_different": 2.5}},
             percent_different=2.5,
-            histogram_data=""
+            histogram_data="",
         )
 
         output_path = exporter.export_summary([result])
@@ -99,20 +99,20 @@ class TestMarkdownExporter:
                 known_good_path=known_path,
                 diff_image_path=diff_path,
                 annotated_image_path=annotated_path,
-                metrics={'Pixel Difference': {'percent_different': diff}},
+                metrics={"Pixel Difference": {"percent_different": diff}},
                 percent_different=diff,
-                histogram_data=""
+                histogram_data="",
             )
             results.append(result)
 
         output_path = exporter.export_summary(results)
-        content = output_path.read_text(encoding='utf-8')
+        content = output_path.read_text(encoding="utf-8")
 
         # Check markdown structure
-        assert '# Image Comparison Summary' in content
-        assert '## Statistics' in content
-        assert '## Detailed Results' in content
-        assert '| # | Filename | Difference % | Status |' in content
+        assert "# Image Comparison Summary" in content
+        assert "## Statistics" in content
+        assert "## Detailed Results" in content
+        assert "| # | Filename | Difference % | Status |" in content
 
         logger.info("✓ Markdown summary format test passed")
 
@@ -125,7 +125,12 @@ class TestMarkdownExporter:
 
         # Create test results with known statistics
         results = []
-        differences = [0.05, 0.5, 2.5, 10.0]  # 1 identical, 1 minor, 1 moderate, 1 major
+        differences = [
+            0.05,
+            0.5,
+            2.5,
+            10.0,
+        ]  # 1 identical, 1 minor, 1 moderate, 1 major
 
         for i, diff in enumerate(differences):
             new_path = temp_image_dir / "new" / f"test{i}.png"
@@ -148,26 +153,26 @@ class TestMarkdownExporter:
                 known_good_path=known_path,
                 diff_image_path=diff_path,
                 annotated_image_path=annotated_path,
-                metrics={'Pixel Difference': {'percent_different': diff}},
+                metrics={"Pixel Difference": {"percent_different": diff}},
                 percent_different=diff,
-                histogram_data=""
+                histogram_data="",
             )
             results.append(result)
 
         output_path = exporter.export_summary(results)
-        content = output_path.read_text(encoding='utf-8')
+        content = output_path.read_text(encoding="utf-8")
 
         # Verify statistics
-        assert '**Total Comparisons**: 4' in content
-        assert '**Nearly Identical** (<0.1%): 1' in content
-        assert '**Minor Differences** (0.1-1%): 1' in content
-        assert '**Moderate Differences** (1-5%): 1' in content
-        assert '**Major Differences** (≥5%): 1' in content
+        assert "**Total Comparisons**: 4" in content
+        assert "**Nearly Identical** (<0.1%): 1" in content
+        assert "**Minor Differences** (0.1-1%): 1" in content
+        assert "**Moderate Differences** (1-5%): 1" in content
+        assert "**Major Differences** (≥5%): 1" in content
 
         # Verify difference statistics
-        assert 'Maximum Difference' in content
-        assert 'Minimum Difference' in content
-        assert 'Average Difference' in content
+        assert "Maximum Difference" in content
+        assert "Minimum Difference" in content
+        assert "Average Difference" in content
 
         logger.info("✓ Markdown statistics test passed")
 
@@ -208,14 +213,14 @@ class TestMarkdownExporter:
                 known_good_path=known_path,
                 diff_image_path=diff_path,
                 annotated_image_path=annotated_path,
-                metrics={'Pixel Difference': {'percent_different': diff}},
+                metrics={"Pixel Difference": {"percent_different": diff}},
                 percent_different=diff,
-                histogram_data=""
+                histogram_data="",
             )
             results.append(result)
 
         output_path = exporter.export_summary(results)
-        content = output_path.read_text(encoding='utf-8')
+        content = output_path.read_text(encoding="utf-8")
 
         # Verify each result appears with correct status
         for filename, diff, expected_status, expected_emoji in test_cases:
@@ -229,10 +234,10 @@ class TestMarkdownExporter:
         """_get_status_text should return correct status."""
         logger.debug("Testing _get_status_text")
 
-        assert MarkdownExporter._get_status_text(0.05) == 'Nearly Identical'
-        assert MarkdownExporter._get_status_text(0.5) == 'Minor Differences'
-        assert MarkdownExporter._get_status_text(2.5) == 'Moderate Differences'
-        assert MarkdownExporter._get_status_text(10.0) == 'Major Differences'
+        assert MarkdownExporter._get_status_text(0.05) == "Nearly Identical"
+        assert MarkdownExporter._get_status_text(0.5) == "Minor Differences"
+        assert MarkdownExporter._get_status_text(2.5) == "Moderate Differences"
+        assert MarkdownExporter._get_status_text(10.0) == "Major Differences"
 
         logger.info("✓ _get_status_text test passed")
 
@@ -240,11 +245,11 @@ class TestMarkdownExporter:
         """_get_status_emoji should return correct emoji."""
         logger.debug("Testing _get_status_emoji")
 
-        assert MarkdownExporter._get_status_emoji('Nearly Identical') == '✅'
-        assert MarkdownExporter._get_status_emoji('Minor Differences') == '⚠️'
-        assert MarkdownExporter._get_status_emoji('Moderate Differences') == '⚠️'
-        assert MarkdownExporter._get_status_emoji('Major Differences') == '❌'
-        assert MarkdownExporter._get_status_emoji('Unknown') == '❓'
+        assert MarkdownExporter._get_status_emoji("Nearly Identical") == "✅"
+        assert MarkdownExporter._get_status_emoji("Minor Differences") == "⚠️"
+        assert MarkdownExporter._get_status_emoji("Moderate Differences") == "⚠️"
+        assert MarkdownExporter._get_status_emoji("Major Differences") == "❌"
+        assert MarkdownExporter._get_status_emoji("Unknown") == "❓"
 
         logger.info("✓ _get_status_emoji test passed")
 
@@ -275,14 +280,14 @@ class TestMarkdownExporter:
                 known_good_path=known_path,
                 diff_image_path=diff_path,
                 annotated_image_path=annotated_path,
-                metrics={'Pixel Difference': {'percent_different': 0.1}},
+                metrics={"Pixel Difference": {"percent_different": 0.1}},
                 percent_different=0.1,
-                histogram_data=""
+                histogram_data="",
             )
             results_passing.append(result)
 
         status_passing = MarkdownExporter._get_overall_status(results_passing)
-        assert status_passing == 'All comparisons passed'
+        assert status_passing == "All comparisons passed"
 
         # Test with some major differences
         results_failing = []
@@ -309,18 +314,18 @@ class TestMarkdownExporter:
                 known_good_path=known_path,
                 diff_image_path=diff_path,
                 annotated_image_path=annotated_path,
-                metrics={'Pixel Difference': {'percent_different': diff_percent}},
+                metrics={"Pixel Difference": {"percent_different": diff_percent}},
                 percent_different=diff_percent,
-                histogram_data=""
+                histogram_data="",
             )
             results_failing.append(result)
 
         status_failing = MarkdownExporter._get_overall_status(results_failing)
-        assert 'Significant issues detected' in status_failing
-        assert '2/3' in status_failing
+        assert "Significant issues detected" in status_failing
+        assert "2/3" in status_failing
 
         # Test with empty results
-        assert MarkdownExporter._get_overall_status([]) == 'No comparisons'
+        assert MarkdownExporter._get_overall_status([]) == "No comparisons"
 
         logger.info("✓ _get_overall_status test passed")
 
@@ -351,26 +356,25 @@ class TestMarkdownExporter:
             known_good_path=known_path,
             diff_image_path=diff_path,
             annotated_image_path=annotated_path,
-            metrics={'Pixel Difference': {'percent_different': 2.5}},
+            metrics={"Pixel Difference": {"percent_different": 2.5}},
             percent_different=2.5,
-            histogram_data=""
+            histogram_data="",
         )
 
         output_path = exporter.export_summary([result])
-        content = output_path.read_text(encoding='utf-8')
+        content = output_path.read_text(encoding="utf-8")
 
         # Should use standard markdown tables
-        assert '|' in content
-        assert '---' in content
+        assert "|" in content
+        assert "---" in content
 
         # Should have links to other reports and detail pages
-        assert 'summary.html' in content
-        assert 'results.json' in content
-        assert 'test.png' in content
-        assert '[View →]' in content  # Links to detail reports
+        assert "summary.html" in content
+        assert "results.json" in content
+        assert "test.png" in content
+        assert "[View →]" in content  # Links to detail reports
 
         logger.info("✓ Markdown pipeline-agnostic format test passed")
-
 
     def test_markdown_includes_timestamp(self, temp_image_dir, simple_test_image):
         """Markdown should include generation timestamp."""
@@ -399,15 +403,15 @@ class TestMarkdownExporter:
             known_good_path=known_path,
             diff_image_path=diff_path,
             annotated_image_path=annotated_path,
-            metrics={'Pixel Difference': {'percent_different': 2.5}},
+            metrics={"Pixel Difference": {"percent_different": 2.5}},
             percent_different=2.5,
-            histogram_data=""
+            histogram_data="",
         )
 
         output_path = exporter.export_summary([result])
-        content = output_path.read_text(encoding='utf-8')
+        content = output_path.read_text(encoding="utf-8")
 
-        assert 'Generated:' in content
+        assert "Generated:" in content
 
         logger.info("✓ Markdown timestamp test passed")
 
@@ -438,23 +442,25 @@ class TestMarkdownExporter:
             known_good_path=known_path,
             diff_image_path=diff_path,
             annotated_image_path=annotated_path,
-            metrics={'Pixel Difference': {'percent_different': 2.5}},
+            metrics={"Pixel Difference": {"percent_different": 2.5}},
             percent_different=2.5,
-            histogram_data=""
+            histogram_data="",
         )
 
         output_path = exporter.export_summary([result])
-        content = output_path.read_text(encoding='utf-8')
+        content = output_path.read_text(encoding="utf-8")
 
         # Check table headers and separators
-        assert '| Metric | Value |' in content
-        assert '|--------|-------|' in content
-        assert '| # | Filename | Difference % | Status |' in content
-        assert '|---|----------|-------------|--------|' in content
+        assert "| Metric | Value |" in content
+        assert "|--------|-------|" in content
+        assert "| # | Filename | Difference % | Status |" in content
+        assert "|---|----------|-------------|--------|" in content
 
         logger.info("✓ Markdown table formatting test passed")
 
-    def test_export_summary_groups_by_subdirectory(self, temp_image_dir, simple_test_image):
+    def test_export_summary_groups_by_subdirectory(
+        self, temp_image_dir, simple_test_image
+    ):
         """export_summary should group results by subdirectory."""
         logger.debug("Testing export_summary subdirectory grouping")
 
@@ -465,46 +471,47 @@ class TestMarkdownExporter:
         # Create test results in different subdirectories
         results = []
         subdirs = ["", "subdir1", "subdir2"]
-        
+
         for subdir_name in subdirs:
             if subdir_name:
                 subdir_path = base_new_dir / subdir_name
             else:
                 subdir_path = base_new_dir
-            
+
             subdir_path.mkdir(parents=True, exist_ok=True)
-            
+
             new_path = subdir_path / "test.png"
             known_path = temp_image_dir / "known" / (subdir_name or "root") / "test.png"
             known_path.parent.mkdir(parents=True, exist_ok=True)
             diff_path = temp_image_dir / "diff" / "diff_test.png"
             annotated_path = temp_image_dir / "diff" / "annotated_test.png"
-            
+
             diff_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             simple_test_image.save(new_path)
             simple_test_image.save(known_path)
             simple_test_image.save(diff_path)
             simple_test_image.save(annotated_path)
-            
+
             result = ComparisonResult(
-                filename=f"{subdir_name or 'root'}_test.png" if subdir_name else "test.png",
+                filename=(
+                    f"{subdir_name or 'root'}_test.png" if subdir_name else "test.png"
+                ),
                 new_image_path=new_path,
                 known_good_path=known_path,
                 diff_image_path=diff_path,
                 annotated_image_path=annotated_path,
-                metrics={'Pixel Difference': {'percent_different': 1.5}},
+                metrics={"Pixel Difference": {"percent_different": 1.5}},
                 percent_different=1.5,
-                histogram_data=""
+                histogram_data="",
             )
             results.append(result)
 
         output_path = exporter.export_summary(results, base_new_dir)
-        content = output_path.read_text(encoding='utf-8')
+        content = output_path.read_text(encoding="utf-8")
 
         # Check for subdirectory headers
         assert "### Root Directory" in content or "### " in content
         assert "subdir1" in content or "subdir2" in content or content.count("###") >= 1
 
         logger.info("✓ export_summary subdirectory grouping test passed")
-

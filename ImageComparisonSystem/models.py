@@ -13,11 +13,11 @@ from dataclasses import dataclass, asdict
 @dataclass
 class ComparisonResult:
     """Results from comparing a single image pair.
-    
+
     Stores comprehensive results from comparing two images, including
     file paths, metrics, and generated visualization data.
     """
-    
+
     filename: str
     """Name of the compared image files."""
     new_image_path: Path
@@ -57,11 +57,11 @@ class ComparisonResult:
         try:
             rel_path = self.new_image_path.relative_to(base_path)
             parent = rel_path.parent
-            if parent == Path('.'):
-                return ''  # Root level
-            return str(parent).replace('\\', '/')
+            if parent == Path("."):
+                return ""  # Root level
+            return str(parent).replace("\\", "/")
         except ValueError:
-            return ''
+            return ""
 
     def to_dict(self, base_path: Path = None) -> Dict[str, Any]:
         """Convert to dictionary for serialization.
@@ -78,13 +78,13 @@ class ComparisonResult:
         """
         data: Dict[str, Any] = asdict(self)
         # Convert Path objects to strings
-        data['new_image_path'] = str(data['new_image_path'])
-        data['known_good_path'] = str(data['known_good_path'])
-        data['diff_image_path'] = str(data['diff_image_path'])
-        data['annotated_image_path'] = str(data['annotated_image_path'])
+        data["new_image_path"] = str(data["new_image_path"])
+        data["known_good_path"] = str(data["known_good_path"])
+        data["diff_image_path"] = str(data["diff_image_path"])
+        data["annotated_image_path"] = str(data["annotated_image_path"])
 
         # Include subdirectory if base_path provided
         if base_path:
-            data['subdirectory'] = self.get_subdirectory(base_path)
+            data["subdirectory"] = self.get_subdirectory(base_path)
 
         return data

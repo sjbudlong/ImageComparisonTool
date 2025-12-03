@@ -45,9 +45,7 @@ class TestImageComparator:
 
         # Create a config and comparator
         config = Config(
-            base_dir=temp_image_dir,
-            new_dir="test_flat",
-            known_good_dir="known_good"
+            base_dir=temp_image_dir, new_dir="test_flat", known_good_dir="known_good"
         )
         comparator = ImageComparator(config)
 
@@ -56,7 +54,9 @@ class TestImageComparator:
 
         assert len(images) == 3
         assert all(img.exists() for img in images)
-        assert all(img.suffix.lower() in ImageComparator.IMAGE_EXTENSIONS for img in images)
+        assert all(
+            img.suffix.lower() in ImageComparator.IMAGE_EXTENSIONS for img in images
+        )
 
         logger.info("✓ _find_images flat directory test passed")
 
@@ -78,9 +78,7 @@ class TestImageComparator:
 
         # Create config and comparator
         config = Config(
-            base_dir=temp_image_dir,
-            new_dir="test_nested",
-            known_good_dir="known_good"
+            base_dir=temp_image_dir, new_dir="test_nested", known_good_dir="known_good"
         )
         comparator = ImageComparator(config)
 
@@ -102,9 +100,7 @@ class TestImageComparator:
         test_dir.mkdir()
 
         config = Config(
-            base_dir=temp_image_dir,
-            new_dir="empty",
-            known_good_dir="known_good"
+            base_dir=temp_image_dir, new_dir="empty", known_good_dir="known_good"
         )
         comparator = ImageComparator(config)
 
@@ -121,9 +117,7 @@ class TestImageComparator:
         nonexistent_dir = temp_image_dir / "does_not_exist"
 
         config = Config(
-            base_dir=temp_image_dir,
-            new_dir="new",
-            known_good_dir="known_good"
+            base_dir=temp_image_dir, new_dir="new", known_good_dir="known_good"
         )
         comparator = ImageComparator(config)
 
@@ -133,7 +127,9 @@ class TestImageComparator:
 
         logger.info("✓ _find_images nonexistent directory test passed")
 
-    def test_compare_single_pair_creates_outputs(self, valid_config, simple_test_image, simple_test_image_modified):
+    def test_compare_single_pair_creates_outputs(
+        self, valid_config, simple_test_image, simple_test_image_modified
+    ):
         """_compare_single_pair should create diff and annotated images."""
         logger.debug("Testing _compare_single_pair output creation")
 
@@ -158,7 +154,7 @@ class TestImageComparator:
 
         # Verify metrics were generated
         assert result.metrics is not None
-        assert 'Pixel Difference' in result.metrics
+        assert "Pixel Difference" in result.metrics
         assert result.percent_different >= 0
 
         # Verify histogram data was generated
@@ -167,7 +163,9 @@ class TestImageComparator:
 
         logger.info("✓ _compare_single_pair output creation test passed")
 
-    def test_compare_all_with_matching_files(self, temp_image_dir, simple_test_image, simple_test_image_modified):
+    def test_compare_all_with_matching_files(
+        self, temp_image_dir, simple_test_image, simple_test_image_modified
+    ):
         """compare_all should find and compare matching images."""
         logger.debug("Testing compare_all with matching files")
 
@@ -185,9 +183,7 @@ class TestImageComparator:
         simple_test_image.save(known_dir / "test2.jpg")
 
         config = Config(
-            base_dir=temp_image_dir,
-            new_dir="new",
-            known_good_dir="known_good"
+            base_dir=temp_image_dir, new_dir="new", known_good_dir="known_good"
         )
         comparator = ImageComparator(config)
 
@@ -223,9 +219,7 @@ class TestImageComparator:
         simple_test_image.save(known_subdir / "nested.png")
 
         config = Config(
-            base_dir=temp_image_dir,
-            new_dir="new",
-            known_good_dir="known_good"
+            base_dir=temp_image_dir, new_dir="new", known_good_dir="known_good"
         )
         comparator = ImageComparator(config)
 
@@ -257,9 +251,7 @@ class TestImageComparator:
         simple_test_image.save(known_subdir / "image.png")
 
         config = Config(
-            base_dir=temp_image_dir,
-            new_dir="new",
-            known_good_dir="known_good"
+            base_dir=temp_image_dir, new_dir="new", known_good_dir="known_good"
         )
         comparator = ImageComparator(config)
 
@@ -284,9 +276,7 @@ class TestImageComparator:
         simple_test_image.save(new_dir / "orphan.png")
 
         config = Config(
-            base_dir=temp_image_dir,
-            new_dir="new",
-            known_good_dir="known_good"
+            base_dir=temp_image_dir, new_dir="new", known_good_dir="known_good"
         )
         comparator = ImageComparator(config)
 
@@ -307,9 +297,7 @@ class TestImageComparator:
         known_dir.mkdir()
 
         config = Config(
-            base_dir=temp_image_dir,
-            new_dir="new",
-            known_good_dir="known_good"
+            base_dir=temp_image_dir, new_dir="new", known_good_dir="known_good"
         )
         comparator = ImageComparator(config)
 
@@ -346,7 +334,9 @@ class TestImageComparator:
 
         logger.info("✓ _clean_output_directories test passed")
 
-    def test_compare_all_generates_reports(self, temp_image_dir, simple_test_image, simple_test_image_modified):
+    def test_compare_all_generates_reports(
+        self, temp_image_dir, simple_test_image, simple_test_image_modified
+    ):
         """compare_all should generate HTML and markdown reports."""
         logger.debug("Testing compare_all report generation")
 
@@ -360,9 +350,7 @@ class TestImageComparator:
         simple_test_image.save(known_dir / "test.png")
 
         config = Config(
-            base_dir=temp_image_dir,
-            new_dir="new",
-            known_good_dir="known_good"
+            base_dir=temp_image_dir, new_dir="new", known_good_dir="known_good"
         )
         comparator = ImageComparator(config)
 
@@ -379,13 +367,15 @@ class TestImageComparator:
         """ImageComparator should support multiple image extensions."""
         logger.debug("Testing supported image extensions")
 
-        expected_extensions = {'.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.gif'}
+        expected_extensions = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".gif"}
 
         assert ImageComparator.IMAGE_EXTENSIONS == expected_extensions
 
         logger.info("✓ Image extensions test passed")
 
-    def test_compare_all_parallel_config_enabled(self, temp_image_dir, simple_test_image, simple_test_image_modified):
+    def test_compare_all_parallel_config_enabled(
+        self, temp_image_dir, simple_test_image, simple_test_image_modified
+    ):
         """When enable_parallel=True, should use parallel processing."""
         logger.debug("Testing parallel processing with enable_parallel=True")
 
@@ -405,7 +395,7 @@ class TestImageComparator:
             new_dir="new",
             known_good_dir="known_good",
             enable_parallel=True,
-            max_workers=2
+            max_workers=2,
         )
 
         comparator = ImageComparator(config)
@@ -422,7 +412,9 @@ class TestImageComparator:
 
         logger.info("✓ Parallel processing config test passed")
 
-    def test_compare_all_parallel_worker_function(self, valid_config, simple_test_image, simple_test_image_modified):
+    def test_compare_all_parallel_worker_function(
+        self, valid_config, simple_test_image, simple_test_image_modified
+    ):
         """_compare_pair_worker should process images correctly."""
         logger.debug("Testing _compare_pair_worker static function")
 
@@ -434,25 +426,27 @@ class TestImageComparator:
 
         # Serialize config for worker
         config_dict = {
-            'base_dir': valid_config.base_dir,
-            'new_dir': valid_config.new_dir,
-            'known_good_dir': valid_config.known_good_dir,
-            'diff_dir': valid_config.diff_dir,
-            'html_dir': valid_config.html_dir,
-            'pixel_diff_threshold': valid_config.pixel_diff_threshold,
-            'pixel_change_threshold': valid_config.pixel_change_threshold,
-            'ssim_threshold': valid_config.ssim_threshold,
-            'color_distance_threshold': valid_config.color_distance_threshold,
-            'min_contour_area': valid_config.min_contour_area,
-            'use_histogram_equalization': valid_config.use_histogram_equalization,
-            'use_clahe': valid_config.use_clahe,
-            'equalize_to_grayscale': valid_config.equalize_to_grayscale,
-            'highlight_color': valid_config.highlight_color,
-            'diff_enhancement_factor': valid_config.diff_enhancement_factor,
+            "base_dir": valid_config.base_dir,
+            "new_dir": valid_config.new_dir,
+            "known_good_dir": valid_config.known_good_dir,
+            "diff_dir": valid_config.diff_dir,
+            "html_dir": valid_config.html_dir,
+            "pixel_diff_threshold": valid_config.pixel_diff_threshold,
+            "pixel_change_threshold": valid_config.pixel_change_threshold,
+            "ssim_threshold": valid_config.ssim_threshold,
+            "color_distance_threshold": valid_config.color_distance_threshold,
+            "min_contour_area": valid_config.min_contour_area,
+            "use_histogram_equalization": valid_config.use_histogram_equalization,
+            "use_clahe": valid_config.use_clahe,
+            "equalize_to_grayscale": valid_config.equalize_to_grayscale,
+            "highlight_color": valid_config.highlight_color,
+            "diff_enhancement_factor": valid_config.diff_enhancement_factor,
         }
 
         # Call worker function
-        result = ImageComparator._compare_pair_worker((config_dict, new_path, known_path))
+        result = ImageComparator._compare_pair_worker(
+            (config_dict, new_path, known_path)
+        )
 
         # Verify result
         assert result is not None
@@ -463,7 +457,9 @@ class TestImageComparator:
 
         logger.info("✓ Worker function test passed")
 
-    def test_compare_all_parallel_vs_sequential_equivalence(self, temp_image_dir, simple_test_image, simple_test_image_modified):
+    def test_compare_all_parallel_vs_sequential_equivalence(
+        self, temp_image_dir, simple_test_image, simple_test_image_modified
+    ):
         """Parallel and sequential processing should produce equivalent results."""
         logger.debug("Testing parallel vs sequential equivalence")
 
@@ -480,9 +476,7 @@ class TestImageComparator:
 
         # Run sequential
         config_seq = Config(
-            base_dir=temp_image_dir,
-            new_dir="new",
-            known_good_dir="known_good"
+            base_dir=temp_image_dir, new_dir="new", known_good_dir="known_good"
         )
         comparator_seq = ImageComparator(config_seq)
         results_seq = comparator_seq.compare_all()
@@ -496,7 +490,7 @@ class TestImageComparator:
             new_dir="new",
             known_good_dir="known_good",
             enable_parallel=True,
-            max_workers=2
+            max_workers=2,
         )
         comparator_par = ImageComparator(config_par)
         results_par = comparator_par.compare_all_parallel()

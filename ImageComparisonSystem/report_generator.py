@@ -8,69 +8,76 @@ image comparisons and summary pages showing all results.
 import logging
 from pathlib import Path
 from typing import List, Optional
-from config import Config
-from models import ComparisonResult
+
+# Handle both package and direct module imports
+try:
+    from .config import Config
+    from .models import ComparisonResult
+except ImportError:
+    from config import Config  # type: ignore
+    from models import ComparisonResult  # type: ignore
 
 logger = logging.getLogger("ImageComparison")
 
 
 class ReportGenerator:
     """Generates HTML reports for comparison results.
-    
+
     Creates detailed HTML reports for each image comparison and a summary
     page with navigation and statistics.
     """
-    
+
     # Metric descriptions for tooltips
     METRIC_DESCRIPTIONS = {
-        'Pixel Difference': (
-            'Compares pixel-by-pixel differences between images. '
-            'Shows the percentage of pixels that differ and average RGB distance.'
+        "Pixel Difference": (
+            "Compares pixel-by-pixel differences between images. "
+            "Shows the percentage of pixels that differ and average RGB distance."
         ),
-        'Structural Similarity': (
-            'Measures structural similarity (SSIM) between images on a scale of 0-1. '
-            'Higher values indicate more similar images. '
-            'Accounts for luminance, contrast, and structure.'
+        "Structural Similarity": (
+            "Measures structural similarity (SSIM) between images on a scale of 0-1. "
+            "Higher values indicate more similar images. "
+            "Accounts for luminance, contrast, and structure."
         ),
-        'Histogram Analysis': (
-            'Analyzes the distribution of color and brightness values. '
-            'Compares histograms for each color channel (RGB). '
-            'Useful for detecting lighting or contrast changes.'
+        "Histogram Analysis": (
+            "Analyzes the distribution of color and brightness values. "
+            "Compares histograms for each color channel (RGB). "
+            "Useful for detecting lighting or contrast changes."
         ),
     }
-    
+
     def __init__(self, config: Config) -> None:
         """Initialize report generator.
-        
+
         Args:
             config: Configuration object with output paths
         """
         self.config: Config = config
-    
-    def generate_detail_report(self, result: ComparisonResult, 
-                              results: Optional[List[ComparisonResult]] = None) -> None:
+
+    def generate_detail_report(
+        self, result: ComparisonResult, results: Optional[List[ComparisonResult]] = None
+    ) -> None:
         """Generate detailed HTML report for a single comparison.
-        
+
         Creates an HTML file with comparison details including side-by-side
         images, diff visualization, metrics, and navigation links.
-        
+
         Args:
             result: Comparison result to generate report for
             results: Optional list of all results for navigation links
         """
         output_path: Path = self.config.html_path / f"{result.filename}.html"
-        
+
         try:
             # Get relative paths for images (relative to the HTML output directory)
             new_img_rel: str = self._get_relative_path(result.new_image_path)
             known_good_rel: str = self._get_relative_path(result.known_good_path)
             diff_rel: str = self._get_relative_path(result.diff_image_path)
             annotated_rel: str = self._get_relative_path(result.annotated_image_path)
-            
+
             # Get subdirectory for breadcrumb and back link
             subdir = result.get_subdirectory(self.config.new_path)
             if subdir:
-                safe_subdir = subdir.replace('/', '_').replace('\\', '_')
+                safe_subdir = subdir.replace("/", "_").replace("\\", "_")
                 subdir_link = f"subdir_{safe_subdir}.html"
                 breadcrumb_middle = f'<a href="{subdir_link}">{subdir}</a>'
             else:
@@ -78,12 +85,16 @@ class ReportGenerator:
                 breadcrumb_middle = '<a href="subdir_root.html">Ungrouped</a>'
 
             # Generate navigation links
-            prev_link: str = ''
-            next_link: str = ''
+            prev_link: str = ""
+            next_link: str = ""
             if results and len(results) > 1:
                 # Find current result index
                 try:
-                    current_idx: int = next(i for i, r in enumerate(results) if r.filename == result.filename)
+                    current_idx: int = next(
+                        i
+                        for i, r in enumerate(results)
+                        if r.filename == result.filename
+                    )
 
                     # Previous link
                     if current_idx > 0:
@@ -98,36 +109,38 @@ class ReportGenerator:
                     pass
 
             html: str = self._get_html_template()
-            html = html.replace('{{TITLE}}', f"Comparison: {result.filename}")
-            html = html.replace('{{FILENAME}}', result.filename)
-            html = html.replace('{{PERCENT_DIFF}}', f"{result.percent_different:.4f}")
-            html = html.replace('{{NEW_IMAGE}}', new_img_rel)
-            html = html.replace('{{KNOWN_GOOD_IMAGE}}', known_good_rel)
-            html = html.replace('{{DIFF_IMAGE}}', diff_rel)
-            html = html.replace('{{ANNOTATED_IMAGE}}', annotated_rel)
-            html = html.replace('{{METRICS}}', self._format_metrics(result.metrics))
-            html = html.replace('{{HISTOGRAM_DATA}}', result.histogram_data or '')
-            html = html.replace('{{BREADCRUMB_MIDDLE}}', breadcrumb_middle)
-            html = html.replace('{{SUBDIR_LINK}}', subdir_link)
-            html = html.replace('{{PREV_LINK}}', prev_link)
-            html = html.replace('{{NEXT_LINK}}', next_link)
-            
-            with open(output_path, 'w', encoding='utf-8') as f:
+            html = html.replace("{{TITLE}}", f"Comparison: {result.filename}")
+            html = html.replace("{{FILENAME}}", result.filename)
+            html = html.replace("{{PERCENT_DIFF}}", f"{result.percent_different:.4f}")
+            html = html.replace("{{NEW_IMAGE}}", new_img_rel)
+            html = html.replace("{{KNOWN_GOOD_IMAGE}}", known_good_rel)
+            html = html.replace("{{DIFF_IMAGE}}", diff_rel)
+            html = html.replace("{{ANNOTATED_IMAGE}}", annotated_rel)
+            html = html.replace("{{METRICS}}", self._format_metrics(result.metrics))
+            html = html.replace("{{HISTOGRAM_DATA}}", result.histogram_data or "")
+            html = html.replace("{{BREADCRUMB_MIDDLE}}", breadcrumb_middle)
+            html = html.replace("{{SUBDIR_LINK}}", subdir_link)
+            html = html.replace("{{PREV_LINK}}", prev_link)
+            html = html.replace("{{NEXT_LINK}}", next_link)
+
+            with open(output_path, "w", encoding="utf-8") as f:
                 f.write(html)
             logger.info(f"Generated report: {output_path.name}")
         except Exception as e:
-            logger.error(f"Error generating report for {result.filename}: {e}", exc_info=True)
-    
+            logger.error(
+                f"Error generating report for {result.filename}: {e}", exc_info=True
+            )
+
     def generate_summary_report(self, results: List[ComparisonResult]):
         """Generate summary HTML report listing all comparisons grouped by subdirectory."""
-        output_path = self.config.html_path / 'summary.html'
+        output_path = self.config.html_path / "summary.html"
 
         try:
             # Group results by subdirectory
             grouped = self._group_by_subdirectory(results)
 
             # Sort subdirectories: empty string (root) first, then alphabetically
-            sorted_subdirs = sorted(grouped.keys(), key=lambda x: (x != '', x))
+            sorted_subdirs = sorted(grouped.keys(), key=lambda x: (x != "", x))
 
             rows_html = []
             for idx, subdir in enumerate(sorted_subdirs):
@@ -135,7 +148,9 @@ class ReportGenerator:
 
                 # Calculate statistics
                 image_count = len(subdir_results)
-                avg_diff = sum(r.percent_different for r in subdir_results) / image_count
+                avg_diff = (
+                    sum(r.percent_different for r in subdir_results) / image_count
+                )
                 max_diff = max(r.percent_different for r in subdir_results)
 
                 # Determine status class based on max difference
@@ -144,13 +159,13 @@ class ReportGenerator:
                 # Display name and link
                 if subdir:
                     display_name = subdir
-                    safe_subdir = subdir.replace('/', '_').replace('\\', '_')
+                    safe_subdir = subdir.replace("/", "_").replace("\\", "_")
                     subdir_link = f"subdir_{safe_subdir}.html"
                 else:
                     display_name = "Ungrouped"
                     subdir_link = "subdir_root.html"
 
-                row = f'''
+                row = f"""
                 <tr class="{status_class}">
                     <td>{idx + 1}</td>
                     <td><a href="{subdir_link}">{display_name}</a></td>
@@ -161,20 +176,22 @@ class ReportGenerator:
                         <a href="{subdir_link}" class="btn-view">View Directory</a>
                     </td>
                 </tr>
-            '''
+            """
                 rows_html.append(row)
 
             summary_html = self._get_summary_template()
-            summary_html = summary_html.replace('{{TOTAL_COUNT}}', str(len(results)))
-            summary_html = summary_html.replace('{{ROWS}}', '\n'.join(rows_html))
+            summary_html = summary_html.replace("{{TOTAL_COUNT}}", str(len(results)))
+            summary_html = summary_html.replace("{{ROWS}}", "\n".join(rows_html))
 
-            with open(output_path, 'w', encoding='utf-8') as f:
+            with open(output_path, "w", encoding="utf-8") as f:
                 f.write(summary_html)
             logger.info("Generated summary report: summary.html")
         except Exception as e:
             logger.error(f"Error generating summary report: {e}", exc_info=True)
 
-    def generate_subdirectory_index(self, subdirectory: str, results: List[ComparisonResult]) -> None:
+    def generate_subdirectory_index(
+        self, subdirectory: str, results: List[ComparisonResult]
+    ) -> None:
         """Generate index page for a subdirectory showing all images with thumbnails.
 
         Creates an HTML page with thumbnail grid showing all comparison results
@@ -188,7 +205,7 @@ class ReportGenerator:
         # Determine output filename
         if subdirectory:
             # Create safe filename from subdirectory path
-            safe_subdir = subdirectory.replace('/', '_').replace('\\', '_')
+            safe_subdir = subdirectory.replace("/", "_").replace("\\", "_")
             output_filename = f"subdir_{safe_subdir}.html"
             display_name = subdirectory
         else:
@@ -214,7 +231,7 @@ class ReportGenerator:
                 status_class = self._get_status_class(result.percent_different)
 
                 # Build card HTML
-                card = f'''
+                card = f"""
             <a href="{detail_link}" class="comparison-card {status_class}">
                 <div class="card-header">
                     <div class="filename">{result.filename}</div>
@@ -239,26 +256,29 @@ class ReportGenerator:
                     </div>
                 </div>
             </a>
-            '''
+            """
                 cards_html.append(card)
 
             # Get template and replace placeholders
             html = self._get_subdirectory_index_template()
-            html = html.replace('{{SUBDIRECTORY}}', display_name)
-            html = html.replace('{{SUBDIRECTORY_DISPLAY}}', display_name)
-            html = html.replace('{{BACK_TO_SUMMARY}}', 'summary.html')
-            html = html.replace('{{IMAGE_COUNT}}', str(len(results)))
-            html = html.replace('{{PLURAL}}', 's' if len(results) != 1 else '')
-            html = html.replace('{{COMPARISON_CARDS}}', '\n'.join(cards_html))
+            html = html.replace("{{SUBDIRECTORY}}", display_name)
+            html = html.replace("{{SUBDIRECTORY_DISPLAY}}", display_name)
+            html = html.replace("{{BACK_TO_SUMMARY}}", "summary.html")
+            html = html.replace("{{IMAGE_COUNT}}", str(len(results)))
+            html = html.replace("{{PLURAL}}", "s" if len(results) != 1 else "")
+            html = html.replace("{{COMPARISON_CARDS}}", "\n".join(cards_html))
 
             # Write file
-            with open(output_path, 'w', encoding='utf-8') as f:
+            with open(output_path, "w", encoding="utf-8") as f:
                 f.write(html)
 
             logger.info(f"Generated subdirectory index: {output_filename}")
 
         except Exception as e:
-            logger.error(f"Error generating subdirectory index for {subdirectory}: {e}", exc_info=True)
+            logger.error(
+                f"Error generating subdirectory index for {subdirectory}: {e}",
+                exc_info=True,
+            )
 
     def _group_by_subdirectory(self, results: List[ComparisonResult]):
         """Group comparison results by subdirectory.
@@ -275,6 +295,7 @@ class ReportGenerator:
             Empty string key represents root-level images.
         """
         from collections import defaultdict
+
         grouped = defaultdict(list)
 
         for result in results:
@@ -293,49 +314,56 @@ class ReportGenerator:
             # Compute path relative to the HTML output directory so links work
             # regardless of where images are stored under the project.
             from os import path as _opath
+
             rel = _opath.relpath(str(path), start=str(self.config.html_path))
-            return rel.replace('\\', '/')
+            return rel.replace("\\", "/")
         except Exception:
             return str(path)
-    
+
     def _format_metrics(self, metrics: dict) -> str:
         """Format metrics dictionary as HTML with togglable descriptions."""
         html_parts = []
-        
+
         for analyzer_name, analyzer_metrics in metrics.items():
             # Generate unique ID for this metric group
-            group_id = analyzer_name.lower().replace(' ', '-')
-            description = self.METRIC_DESCRIPTIONS.get(analyzer_name, '')
-            
-            html_parts.append(f'<div class="metric-group">')
-            html_parts.append(f'<div class="metric-header" onclick="toggleDescription(\'{group_id}\')">')
-            html_parts.append(f'<h3>{analyzer_name}</h3>')
+            group_id = analyzer_name.lower().replace(" ", "-")
+            description = self.METRIC_DESCRIPTIONS.get(analyzer_name, "")
+
+            html_parts.append('<div class="metric-group">')
+            html_parts.append(
+                f'<div class="metric-header" onclick="toggleDescription(\'{group_id}\')">'
+            )
+            html_parts.append(f"<h3>{analyzer_name}</h3>")
             if description:
-                html_parts.append(f'<span class="metric-help-icon" title="Click to see description">?</span>')
-            html_parts.append('</div>')
-            
+                html_parts.append(
+                    '<span class="metric-help-icon" title="Click to see description">?</span>'
+                )
+            html_parts.append("</div>")
+
             if description:
-                html_parts.append(f'<div class="metric-description" id="{group_id}-desc" style="display: none;">')
-                html_parts.append(f'<p>{description}</p>')
-                html_parts.append('</div>')
-            
-            html_parts.append('<dl>')
-            
+                html_parts.append(
+                    f'<div class="metric-description" id="{group_id}-desc" style="display: none;">'
+                )
+                html_parts.append(f"<p>{description}</p>")
+                html_parts.append("</div>")
+
+            html_parts.append("<dl>")
+
             for key, value in analyzer_metrics.items():
-                if key != 'error':
+                if key != "error":
                     formatted_value = self._format_value(value)
-                    html_parts.append(f'<dt>{self._format_key(key)}</dt>')
-                    html_parts.append(f'<dd>{formatted_value}</dd>')
-            
-            html_parts.append('</dl>')
-            html_parts.append('</div>')
-        
-        return '\n'.join(html_parts)
-    
+                    html_parts.append(f"<dt>{self._format_key(key)}</dt>")
+                    html_parts.append(f"<dd>{formatted_value}</dd>")
+
+            html_parts.append("</dl>")
+            html_parts.append("</div>")
+
+        return "\n".join(html_parts)
+
     def _format_key(self, key: str) -> str:
         """Format metric key for display."""
-        return key.replace('_', ' ').title()
-    
+        return key.replace("_", " ").title()
+
     def _format_value(self, value) -> str:
         """Format metric value for display."""
         if isinstance(value, float):
@@ -344,33 +372,33 @@ class ReportGenerator:
             return str(value)
         else:
             return str(value)
-    
+
     def _get_status_class(self, percent_diff: float) -> str:
         """Get CSS class based on difference percentage."""
         if percent_diff < 0.1:
-            return 'status-identical'
+            return "status-identical"
         elif percent_diff < 1.0:
-            return 'status-minor'
+            return "status-minor"
         elif percent_diff < 5.0:
-            return 'status-moderate'
+            return "status-moderate"
         else:
-            return 'status-major'
-    
+            return "status-major"
+
     def _get_status_text(self, percent_diff: float) -> str:
         """Get status text based on difference percentage."""
         if percent_diff < 0.1:
-            return 'Nearly Identical'
+            return "Nearly Identical"
         elif percent_diff < 1.0:
-            return 'Minor Differences'
+            return "Minor Differences"
         elif percent_diff < 5.0:
-            return 'Moderate Differences'
+            return "Moderate Differences"
         else:
-            return 'Major Differences'
-    
+            return "Major Differences"
+
     def _get_nav_link(self, direction: str, result: ComparisonResult) -> str:
         """Generate navigation link HTML - deprecated, kept for compatibility."""
         # Navigation is now handled in generate_detail_report
-        return ''
+        return ""
 
     def _get_subdirectory_index_template(self) -> str:
         """Return HTML template for subdirectory index page.
@@ -379,7 +407,7 @@ class ReportGenerator:
         Each entry displays 4 thumbnails in a horizontal row: new, known_good,
         diff, and annotated_diff images.
         """
-        return '''<!DOCTYPE html>
+        return """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -545,11 +573,11 @@ class ReportGenerator:
         </div>
     </div>
 </body>
-</html>'''
+</html>"""
 
     def _get_html_template(self) -> str:
         """Return HTML template for detail page."""
-        return '''<!DOCTYPE html>
+        return """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -971,11 +999,11 @@ class ReportGenerator:
         });
     </script>
 </body>
-</html>'''
-    
+</html>"""
+
     def _get_summary_template(self) -> str:
         """Return HTML template for summary page."""
-        return '''<!DOCTYPE html>
+        return """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1075,4 +1103,4 @@ class ReportGenerator:
         </table>
     </div>
 </body>
-</html>'''
+</html>"""

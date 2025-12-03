@@ -9,7 +9,14 @@ from PIL import Image
 import numpy as np
 
 # Add ImageComparisonSystem to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "ImageComparisonSystem"))
+image_comp_system_path = str(Path(__file__).parent.parent / "ImageComparisonSystem")
+if image_comp_system_path not in sys.path:
+    sys.path.insert(0, image_comp_system_path)
+
+# Also add parent directory to allow ImageComparisonSystem package imports
+parent_path = str(Path(__file__).parent.parent)
+if parent_path not in sys.path:
+    sys.path.insert(0, parent_path)
 
 from config import Config
 from logging_config import setup_logging
@@ -32,7 +39,7 @@ def simple_test_image():
     # Create a 100x100 red image
     img_array = np.zeros((100, 100, 3), dtype=np.uint8)
     img_array[:, :, 0] = 255  # Red channel
-    img = Image.fromarray(img_array, 'RGB')
+    img = Image.fromarray(img_array, "RGB")
     return img
 
 
@@ -43,25 +50,27 @@ def simple_test_image_modified():
     img_array = np.zeros((100, 100, 3), dtype=np.uint8)
     img_array[:, :, 0] = 255  # Red channel
     img_array[10:20, 10:20, :] = [0, 255, 0]  # Green square
-    img = Image.fromarray(img_array, 'RGB')
+    img = Image.fromarray(img_array, "RGB")
     return img
 
 
 @pytest.fixture
-def new_and_known_good_dirs(temp_image_dir, simple_test_image, simple_test_image_modified):
+def new_and_known_good_dirs(
+    temp_image_dir, simple_test_image, simple_test_image_modified
+):
     """Create new and known_good directories with test images."""
     new_dir = temp_image_dir / "new"
     known_good_dir = temp_image_dir / "known_good"
     new_dir.mkdir()
     known_good_dir.mkdir()
-    
+
     # Save test images
     simple_test_image.save(new_dir / "test1.png")
     simple_test_image_modified.save(known_good_dir / "test1.png")
-    
+
     simple_test_image.save(new_dir / "test2.jpg")
     simple_test_image.save(known_good_dir / "test2.jpg")
-    
+
     return new_dir, known_good_dir
 
 
@@ -73,7 +82,7 @@ def base_config(temp_image_dir):
         new_dir="new",
         known_good_dir="known_good",
         pixel_diff_threshold=0.01,
-        ssim_threshold=0.95
+        ssim_threshold=0.95,
     )
 
 
@@ -86,7 +95,7 @@ def valid_config(temp_image_dir, new_and_known_good_dirs):
         new_dir="new",
         known_good_dir="known_good",
         pixel_diff_threshold=0.01,
-        ssim_threshold=0.95
+        ssim_threshold=0.95,
     )
     return config
 
@@ -97,9 +106,5 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
     )
-    config.addinivalue_line(
-        "markers", "integration: marks tests as integration tests"
-    )
-    config.addinivalue_line(
-        "markers", "unit: marks tests as unit tests"
-    )
+    config.addinivalue_line("markers", "integration: marks tests as integration tests")
+    config.addinivalue_line("markers", "unit: marks tests as unit tests")
