@@ -7,7 +7,7 @@ including paths, tolerances, and visual settings.
 
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict
 
 
 @dataclass
@@ -113,6 +113,36 @@ class Config:
     max_workers: Optional[int] = None
     """Maximum number of worker processes. None = use CPU count."""
 
+    # Historical tracking settings
+    enable_history: bool = True
+    """Whether to enable historical metrics tracking."""
+    build_number: Optional[str] = None
+    """Build number or identifier for this comparison run."""
+    history_db_path: Optional[Path] = None
+    """Custom path to history database. None = use default (<base_dir>/.imgcomp_history/comparison_history.db)."""
+
+    # Composite metric configuration
+    composite_metric_weights: Optional[Dict[str, float]] = None
+    """Custom weights for composite metric calculation. None = use equal weights (0.25 each)."""
+    anomaly_threshold: float = 2.0
+    """Standard deviation threshold for anomaly detection (default: 2.0 = 95% confidence)."""
+
+    # Retention policy settings
+    retention_keep_all: bool = True
+    """Whether to keep all historical runs (True = unlimited retention)."""
+    retention_max_runs: Optional[int] = None
+    """Maximum number of runs to keep. None = unlimited."""
+    retention_max_age_days: Optional[int] = None
+    """Maximum age of runs in days. None = unlimited."""
+    retention_keep_annotated: bool = True
+    """Whether to always preserve runs with annotations during cleanup."""
+    retention_keep_anomalies: bool = True
+    """Whether to always preserve runs with detected anomalies during cleanup."""
+
+    # Source code tracking
+    commit_hash: Optional[str] = None
+    """Git commit hash for reproducibility. Allows recreating the exact environment that generated this run."""
+
     def __post_init__(self) -> None:
         """Convert string paths to Path objects and validate.
 
@@ -128,6 +158,10 @@ class Config:
 
         # Ensure base directory exists
         self.base_dir.mkdir(parents=True, exist_ok=True)
+
+        # Convert history_db_path to Path if it's a string
+        if isinstance(self.history_db_path, str):
+            self.history_db_path = Path(self.history_db_path)
 
     @property
     def new_path(self) -> Path:

@@ -6,8 +6,8 @@ and related metadata.
 """
 
 from pathlib import Path
-from typing import Dict, Any
-from dataclasses import dataclass, asdict
+from typing import Dict, Any, Optional
+from dataclasses import dataclass, asdict, field
 
 
 @dataclass
@@ -34,6 +34,20 @@ class ComparisonResult:
     """Overall percentage difference between images."""
     histogram_data: str
     """Base64 encoded histogram comparison image."""
+
+    # Historical tracking fields (optional, populated by history system)
+    composite_score: Optional[float] = field(default=None)
+    """Composite score from weighted combination of all metrics (0-100 scale)."""
+    historical_mean: Optional[float] = field(default=None)
+    """Historical mean of composite scores for this image."""
+    historical_std_dev: Optional[float] = field(default=None)
+    """Historical standard deviation of composite scores for this image."""
+    std_dev_from_mean: Optional[float] = field(default=None)
+    """Number of standard deviations current score is from historical mean."""
+    is_anomaly: Optional[bool] = field(default=False)
+    """Whether this result is flagged as a statistical anomaly."""
+    run_id: Optional[int] = field(default=None)
+    """Database run ID if result was saved to history."""
 
     def get_subdirectory(self, base_path: Path) -> str:
         """Get subdirectory relative to base path.
@@ -86,5 +100,20 @@ class ComparisonResult:
         # Include subdirectory if base_path provided
         if base_path:
             data["subdirectory"] = self.get_subdirectory(base_path)
+
+        # Include historical tracking fields if present
+        # (these are optional and may be None)
+        if self.composite_score is not None:
+            data["composite_score"] = self.composite_score
+        if self.historical_mean is not None:
+            data["historical_mean"] = self.historical_mean
+        if self.historical_std_dev is not None:
+            data["historical_std_dev"] = self.historical_std_dev
+        if self.std_dev_from_mean is not None:
+            data["std_dev_from_mean"] = self.std_dev_from_mean
+        if self.is_anomaly is not None:
+            data["is_anomaly"] = self.is_anomaly
+        if self.run_id is not None:
+            data["run_id"] = self.run_id
 
         return data

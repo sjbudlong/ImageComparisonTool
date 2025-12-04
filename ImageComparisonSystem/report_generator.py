@@ -17,6 +17,15 @@ except ImportError:
     from config import Config  # type: ignore
     from models import ComparisonResult  # type: ignore
 
+# Try to import visualization module (optional)
+try:
+    from .visualization import TrendChartGenerator
+except ImportError:
+    try:
+        from visualization import TrendChartGenerator  # type: ignore
+    except (ImportError, ValueError):
+        TrendChartGenerator = None  # type: ignore
+
 logger = logging.getLogger("ImageComparison")
 
 
@@ -52,6 +61,16 @@ class ReportGenerator:
             config: Configuration object with output paths
         """
         self.config: Config = config
+
+        # Initialize chart generator if available
+        self.chart_generator = None
+        if TrendChartGenerator is not None:
+            try:
+                self.chart_generator = TrendChartGenerator(figsize=(10, 5), dpi=100)
+                logger.debug("TrendChartGenerator initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize chart generator: {e}")
+                self.chart_generator = None
 
     def generate_detail_report(
         self, result: ComparisonResult, results: Optional[List[ComparisonResult]] = None
@@ -108,6 +127,9 @@ class ReportGenerator:
                 except StopIteration:
                     pass
 
+            # Generate historical section if available
+            historical_section = self._generate_historical_section(result, historical_data=None)
+
             html: str = self._get_html_template()
             html = html.replace("{{TITLE}}", f"Comparison: {result.filename}")
             html = html.replace("{{FILENAME}}", result.filename)
@@ -118,6 +140,7 @@ class ReportGenerator:
             html = html.replace("{{ANNOTATED_IMAGE}}", annotated_rel)
             html = html.replace("{{METRICS}}", self._format_metrics(result.metrics))
             html = html.replace("{{HISTOGRAM_DATA}}", result.histogram_data or "")
+            html = html.replace("{{HISTORICAL_SECTION}}", historical_section)
             html = html.replace("{{BREADCRUMB_MIDDLE}}", breadcrumb_middle)
             html = html.replace("{{SUBDIR_LINK}}", subdir_link)
             html = html.replace("{{PREV_LINK}}", prev_link)
@@ -153,6 +176,22 @@ class ReportGenerator:
                 )
                 max_diff = max(r.percent_different for r in subdir_results)
 
+                # Calculate composite score statistics if available
+                composite_scores = [
+                    r.composite_score for r in subdir_results
+                    if hasattr(r, 'composite_score') and r.composite_score is not None
+                ]
+                avg_composite = (
+                    sum(composite_scores) / len(composite_scores)
+                    if composite_scores else None
+                )
+
+                # Count anomalies
+                anomaly_count = sum(
+                    1 for r in subdir_results
+                    if hasattr(r, 'is_anomaly') and r.is_anomaly
+                )
+
                 # Determine status class based on max difference
                 status_class = self._get_status_class(max_diff)
 
@@ -165,6 +204,20 @@ class ReportGenerator:
                     display_name = "Ungrouped"
                     subdir_link = "subdir_root.html"
 
+                # Format composite score cell
+                composite_cell = ""
+                if avg_composite is not None:
+                    composite_cell = f"{avg_composite:.1f}"
+                else:
+                    composite_cell = "N/A"
+
+                # Format anomaly cell
+                anomaly_cell = ""
+                if anomaly_count > 0:
+                    anomaly_cell = f'<span class="anomaly-count">{anomaly_count}</span>'
+                else:
+                    anomaly_cell = "0"
+
                 row = f"""
                 <tr class="{status_class}">
                     <td>{idx + 1}</td>
@@ -172,6 +225,8 @@ class ReportGenerator:
                     <td>{image_count}</td>
                     <td>{avg_diff:.4f}%</td>
                     <td>{max_diff:.4f}%</td>
+                    <td>{composite_cell}</td>
+                    <td>{anomaly_cell}</td>
                     <td>
                         <a href="{subdir_link}" class="btn-view">View Directory</a>
                     </td>
@@ -230,12 +285,23 @@ class ReportGenerator:
                 # Status class for styling
                 status_class = self._get_status_class(result.percent_different)
 
+                # Get anomaly badge if available
+                anomaly_badge = self._get_anomaly_badge_html(result)
+
+                # Composite score if available
+                composite_info = ""
+                if hasattr(result, 'composite_score') and result.composite_score is not None:
+                    composite_info = f'<div class="composite-info">Score: {result.composite_score:.1f}/100</div>'
+
                 # Build card HTML
                 card = f"""
             <a href="{detail_link}" class="comparison-card {status_class}">
                 <div class="card-header">
-                    <div class="filename">{result.filename}</div>
-                    <div class="diff-badge">{result.percent_different:.4f}% diff</div>
+                    <div class="filename">{result.filename} {anomaly_badge}</div>
+                    <div class="card-metrics">
+                        <div class="diff-badge">{result.percent_different:.4f}% diff</div>
+                        {composite_info}
+                    </div>
                 </div>
                 <div class="thumbnail-row">
                     <div class="thumbnail-item">
@@ -400,6 +466,95 @@ class ReportGenerator:
         # Navigation is now handled in generate_detail_report
         return ""
 
+    def _generate_historical_section(
+        self, result: ComparisonResult, historical_data: Optional[List[dict]] = None
+    ) -> str:
+        """Generate HTML for historical metrics section.
+
+        Args:
+            result: Current comparison result with history fields
+            historical_data: Optional list of historical data points for trend chart
+
+        Returns:
+            HTML string for historical section, or empty string if no history
+        """
+        # Check if result has historical data
+        if not hasattr(result, 'composite_score') or result.composite_score is None:
+            return ""
+
+        html_parts = []
+        html_parts.append('<div class="metrics historical-section">')
+        html_parts.append('<h2>Historical Analysis</h2>')
+
+        # Composite score with anomaly badge
+        html_parts.append('<div class="history-summary">')
+        html_parts.append('<div class="history-metric">')
+        html_parts.append('<dt>Composite Score</dt>')
+
+        # Add anomaly badge if flagged
+        anomaly_badge = ""
+        if hasattr(result, 'is_anomaly') and result.is_anomaly:
+            anomaly_badge = ' <span class="anomaly-badge" title="Statistical anomaly detected">⚠️ ANOMALY</span>'
+
+        html_parts.append(f'<dd class="composite-score">{result.composite_score:.2f}/100{anomaly_badge}</dd>')
+        html_parts.append('</div>')
+
+        # Historical statistics if available
+        if hasattr(result, 'historical_mean') and result.historical_mean is not None:
+            html_parts.append('<div class="history-stats">')
+            html_parts.append('<dl class="history-stats-grid">')
+
+            html_parts.append('<dt>Historical Mean</dt>')
+            html_parts.append(f'<dd>{result.historical_mean:.2f}</dd>')
+
+            if hasattr(result, 'historical_std_dev') and result.historical_std_dev is not None:
+                html_parts.append('<dt>Standard Deviation</dt>')
+                html_parts.append(f'<dd>{result.historical_std_dev:.2f}</dd>')
+
+            if hasattr(result, 'std_dev_from_mean') and result.std_dev_from_mean is not None:
+                html_parts.append('<dt>Deviation from Mean</dt>')
+                deviation_class = "deviation-high" if abs(result.std_dev_from_mean) > 2.0 else "deviation-normal"
+                html_parts.append(f'<dd class="{deviation_class}">{result.std_dev_from_mean:.2f}σ</dd>')
+
+            html_parts.append('</dl>')
+            html_parts.append('</div>')
+
+        html_parts.append('</div>')
+
+        # Generate trend chart if data available
+        if self.chart_generator and historical_data and len(historical_data) >= 2:
+            try:
+                chart_base64 = self.chart_generator.generate_trend_chart(
+                    historical_data=historical_data,
+                    filename=result.filename,
+                    title=f"Historical Trend: {result.filename}"
+                )
+
+                if chart_base64:
+                    html_parts.append('<div class="trend-chart">')
+                    html_parts.append('<h3>Composite Score Over Time</h3>')
+                    html_parts.append(f'<img src="data:image/png;base64,{chart_base64}" alt="Trend Chart" style="width: 100%; max-width: 900px;">')
+                    html_parts.append('</div>')
+            except Exception as e:
+                logger.debug(f"Failed to generate trend chart: {e}")
+
+        html_parts.append('</div>')
+
+        return "\n".join(html_parts)
+
+    def _get_anomaly_badge_html(self, result: ComparisonResult) -> str:
+        """Generate anomaly badge HTML for summary tables.
+
+        Args:
+            result: Comparison result to check for anomaly status
+
+        Returns:
+            HTML string with anomaly badge, or empty string
+        """
+        if hasattr(result, 'is_anomaly') and result.is_anomaly:
+            return '<span class="anomaly-badge-small" title="Statistical anomaly">⚠️</span>'
+        return ""
+
     def _get_subdirectory_index_template(self) -> str:
         """Return HTML template for subdirectory index page.
 
@@ -504,6 +659,15 @@ class ReportGenerator:
             font-weight: 600;
             font-size: 1.1em;
             color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-metrics {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            align-items: flex-end;
         }
         .diff-badge {
             background: #e74c3c;
@@ -512,6 +676,22 @@ class ReportGenerator:
             border-radius: 4px;
             font-weight: bold;
             font-size: 0.9em;
+        }
+        .composite-info {
+            background: #667eea;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .anomaly-badge-small {
+            background: #e74c3c;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            font-weight: bold;
         }
 
         /* Thumbnail grid - 4 images in a horizontal row */
@@ -700,6 +880,105 @@ class ReportGenerator:
             font-size: 1.3em;
             border-bottom: 2px solid #3498db;
             padding-bottom: 10px;
+        }
+        /* Historical Analysis Styles */
+        .historical-section {
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .historical-section h2 {
+            border-bottom-color: rgba(255,255,255,0.3);
+            color: white;
+        }
+        .historical-section h3 {
+            color: white;
+            margin: 20px 0 10px 0;
+        }
+        .history-summary {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .history-metric {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 6px;
+        }
+        .history-metric dt {
+            color: rgba(255,255,255,0.8);
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+        .composite-score {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: white;
+            line-height: 1.2;
+        }
+        .anomaly-badge {
+            display: inline-block;
+            background: #e74c3c;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.4em;
+            font-weight: bold;
+            vertical-align: middle;
+            margin-left: 10px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .anomaly-badge-small {
+            display: inline-block;
+            background: #e74c3c;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            margin-left: 5px;
+        }
+        .history-stats {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 6px;
+        }
+        .history-stats-grid {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            gap: 10px;
+        }
+        .history-stats dt {
+            color: rgba(255,255,255,0.8);
+            font-weight: normal;
+        }
+        .history-stats dd {
+            color: white;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .deviation-high {
+            color: #e74c3c !important;
+            background: rgba(231,76,60,0.2);
+            padding: 2px 8px;
+            border-radius: 3px;
+        }
+        .deviation-normal {
+            color: #27ae60 !important;
+        }
+        .trend-chart {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+        .trend-chart img {
+            border-radius: 6px;
+            background: white;
+            padding: 10px;
         }
         .metric-group {
             margin-bottom: 20px;
@@ -898,12 +1177,14 @@ class ReportGenerator:
                 <img src="{{ANNOTATED_IMAGE}}" alt="Annotated" onclick="showOverlay(this.src)">
             </div>
         </div>
-        
+
+        {{HISTORICAL_SECTION}}
+
         <div class="metrics">
             <h2>Histogram Comparison</h2>
             <img src="data:image/png;base64,{{HISTOGRAM_DATA}}" alt="Histograms" style="width: 100%; max-width: 1000px; margin: 20px 0;">
         </div>
-        
+
         <div class="metrics">
             <h2>Detailed Metrics</h2>
             {{METRICS}}
@@ -1076,6 +1357,15 @@ class ReportGenerator:
         a:hover {
             text-decoration: underline;
         }
+        .anomaly-count {
+            display: inline-block;
+            background: #e74c3c;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
@@ -1094,6 +1384,8 @@ class ReportGenerator:
                     <th>Images</th>
                     <th>Avg Diff %</th>
                     <th>Max Diff %</th>
+                    <th>Avg Composite</th>
+                    <th>Anomalies</th>
                     <th>Actions</th>
                 </tr>
             </thead>
