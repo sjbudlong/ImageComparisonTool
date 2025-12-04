@@ -246,7 +246,7 @@ class AnnotationManager:
                 FROM annotations a
                 JOIN results r ON a.result_id = r.result_id
                 WHERE r.run_id = ?
-                ORDER BY a.annotation_timestamp DESC""",
+                ORDER BY a.annotation_timestamp ASC""",
                 (run_id,),
             )
 

@@ -50,7 +50,9 @@ class Database:
                 conn.execute("PRAGMA foreign_keys=ON")
 
                 # Run schema migration
-                schema_path = Path(__file__).parent / "migrations" / "v1_initial_schema.sql"
+                schema_path = (
+                    Path(__file__).parent / "migrations" / "v1_initial_schema.sql"
+                )
                 if schema_path.exists():
                     with open(schema_path, "r", encoding="utf-8") as f:
                         schema_sql = f.read()
@@ -93,7 +95,7 @@ class Database:
             conn = sqlite3.connect(
                 str(self.db_path),
                 timeout=30.0,  # 30 second timeout for locks
-                isolation_level=None,  # Autocommit mode off for explicit control
+                isolation_level="",  # Enable transaction mode (implicit BEGIN on first statement)
             )
             # Enable foreign keys
             conn.execute("PRAGMA foreign_keys=ON")
@@ -131,9 +133,7 @@ class Database:
             cursor = conn.execute(query, params or ())
             return cursor.fetchall()
 
-    def execute_insert(
-        self, query: str, params: Optional[tuple] = None
-    ) -> int:
+    def execute_insert(self, query: str, params: Optional[tuple] = None) -> int:
         """
         Execute an INSERT query and return the last inserted row ID.
 
@@ -155,9 +155,7 @@ class Database:
             conn.commit()
             return cursor.lastrowid
 
-    def execute_many(
-        self, query: str, params_list: List[tuple]
-    ) -> int:
+    def execute_many(self, query: str, params_list: List[tuple]) -> int:
         """
         Execute multiple INSERT/UPDATE queries in a single transaction.
 
@@ -179,9 +177,7 @@ class Database:
             conn.commit()
             return cursor.rowcount
 
-    def execute_update(
-        self, query: str, params: Optional[tuple] = None
-    ) -> int:
+    def execute_update(self, query: str, params: Optional[tuple] = None) -> int:
         """
         Execute an UPDATE or DELETE query.
 

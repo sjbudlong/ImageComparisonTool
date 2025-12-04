@@ -112,7 +112,7 @@ class HistoryManager:
 
             # Save all results
             if results:
-                self.save_results(run_id, results)
+                self.save_results(run_id, results, config)
 
             logger.info(
                 f"Saved run {run_id} with {total_images} images "
@@ -127,7 +127,8 @@ class HistoryManager:
     def save_results(
         self,
         run_id: int,
-        results: List[ComparisonResult]
+        results: List[ComparisonResult],
+        config=None
     ) -> int:
         """
         Save comparison results for a run.
@@ -137,6 +138,8 @@ class HistoryManager:
         Args:
             run_id: Database ID of the run
             results: List of ComparisonResult objects
+            config: Optional Config object for extracting subdirectories. If not provided,
+                   uses the manager's stored config.
 
         Returns:
             Number of results saved
@@ -148,6 +151,9 @@ class HistoryManager:
         if not results:
             return 0
 
+        # Use provided config or fall back to stored config
+        config_to_use = config if config is not None else self.config
+
         try:
             # Prepare batch insert data
             result_data = []
@@ -155,8 +161,8 @@ class HistoryManager:
                 # Extract metrics from the metrics dictionary
                 metrics = result.metrics
 
-                # Get subdirectory
-                subdirectory = result.get_subdirectory(self.config.new_path)
+                # Get subdirectory using the appropriate config
+                subdirectory = result.get_subdirectory(config_to_use.new_path)
 
                 # Extract individual metrics with safe defaults
                 pixel_metrics = metrics.get("Pixel Difference", {})

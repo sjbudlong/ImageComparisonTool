@@ -172,10 +172,10 @@ class TestRetentionPolicy:
         result = policy.apply_retention(dry_run=False)
 
         assert result["runs_evaluated"] == 4
-        assert result["runs_eligible"] == 2  # 2 oldest runs
-        # Run 2 has anomaly, Run 3 has annotation - both protected
-        assert result["runs_protected"] == 2
-        assert result["runs_deleted"] == 0  # No runs deleted (all protected or kept)
+        assert result["runs_eligible"] == 2  # 2 oldest runs (runs 1 and 2)
+        # Run 2 has anomaly - protected, Run 3 not eligible (within max_runs limit)
+        assert result["runs_protected"] == 1  # Only run 2 (has anomaly)
+        assert result["runs_deleted"] == 1  # Only run 1 deleted (no protection)
 
     def test_apply_retention_max_age(self, populated_database):
         """Retention with max_age_days should delete old runs."""

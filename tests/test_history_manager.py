@@ -18,6 +18,7 @@ from ImageComparisonSystem.models import ComparisonResult
 @dataclass
 class MockConfig:
     """Mock configuration for testing."""
+
     base_dir: Path
     new_dir: str = "new"
     known_good_dir: str = "known_good"
@@ -35,14 +36,20 @@ class MockConfig:
 
 
 def create_mock_result(
-    filename: str,
-    percent_diff: float,
-    subdirectory: str = ""
+    filename: str, percent_diff: float, subdirectory: str = ""
 ) -> ComparisonResult:
     """Create a mock ComparisonResult for testing."""
     base_path = Path("/test/base")
-    new_path = base_path / "new" / subdirectory / filename if subdirectory else base_path / "new" / filename
-    known_path = base_path / "known_good" / subdirectory / filename if subdirectory else base_path / "known_good" / filename
+    new_path = (
+        base_path / "new" / subdirectory / filename
+        if subdirectory
+        else base_path / "new" / filename
+    )
+    known_path = (
+        base_path / "known_good" / subdirectory / filename
+        if subdirectory
+        else base_path / "known_good" / filename
+    )
 
     return ComparisonResult(
         filename=filename,
@@ -85,10 +92,7 @@ def temp_history_manager():
     """Create a temporary HistoryManager for testing."""
     with tempfile.TemporaryDirectory() as tmpdir:
         base_dir = Path(tmpdir)
-        config = MockConfig(
-            base_dir=base_dir,
-            build_number="test-build-001"
-        )
+        config = MockConfig(base_dir=base_dir, build_number="test-build-001")
         manager = HistoryManager(config)
         yield manager
         manager.close()
@@ -114,10 +118,7 @@ class TestHistoryManagerInitialization:
         with tempfile.TemporaryDirectory() as tmpdir:
             base_dir = Path(tmpdir)
             custom_db_path = Path(tmpdir) / "custom" / "history.db"
-            config = MockConfig(
-                base_dir=base_dir,
-                history_db_path=custom_db_path
-            )
+            config = MockConfig(base_dir=base_dir, history_db_path=custom_db_path)
             manager = HistoryManager(config)
 
             assert manager.db_path == custom_db_path
@@ -130,10 +131,7 @@ class TestSaveRun:
 
     def test_save_empty_run(self, temp_history_manager):
         """Test saving a run with no results."""
-        config = MockConfig(
-            base_dir=Path("/test"),
-            build_number="build-100"
-        )
+        config = MockConfig(base_dir=Path("/test"), build_number="build-100")
 
         run_id = temp_history_manager.save_run([], config)
 
@@ -148,10 +146,7 @@ class TestSaveRun:
 
     def test_save_run_with_results(self, temp_history_manager):
         """Test saving a run with multiple results."""
-        config = MockConfig(
-            base_dir=Path("/test"),
-            build_number="build-200"
-        )
+        config = MockConfig(base_dir=Path("/test"), build_number="build-200")
 
         results = [
             create_mock_result("image1.png", 10.5),
@@ -177,10 +172,7 @@ class TestSaveRun:
 
     def test_save_run_with_subdirectories(self, temp_history_manager):
         """Test saving results with subdirectory grouping."""
-        config = MockConfig(
-            base_dir=Path("/test"),
-            build_number="build-300"
-        )
+        config = MockConfig(base_dir=Path("/test/base"), build_number="build-300")
 
         results = [
             create_mock_result("image1.png", 10.0, "renders/scene1"),
@@ -282,7 +274,7 @@ class TestQueryResults:
 
     def test_get_history_for_image_with_subdirectory(self, temp_history_manager):
         """Test retrieving history with subdirectory filter."""
-        config = MockConfig(base_dir=Path("/test"), build_number="build-1000")
+        config = MockConfig(base_dir=Path("/test/base"), build_number="build-1000")
 
         results = [
             create_mock_result("image.png", 10.0, "renders/scene1"),
@@ -292,8 +284,7 @@ class TestQueryResults:
         temp_history_manager.save_run(results, config)
 
         history = temp_history_manager.get_history_for_image(
-            "image.png",
-            subdirectory="renders/scene1"
+            "image.png", subdirectory="renders/scene1"
         )
 
         assert len(history) == 1
@@ -361,15 +352,16 @@ class TestStatistics:
         # Save multiple runs with composite scores
         for i in range(5):
             config = MockConfig(
-                base_dir=Path("/test"),
-                build_number=f"build-{1400 + i}"
+                base_dir=Path("/test"), build_number=f"build-{1400 + i}"
             )
             result = create_mock_result("trend_image.png", 10.0 + i * 5)
             result.composite_score = 50.0 + i * 10  # Add composite score
 
             temp_history_manager.save_run([result], config)
 
-        trends = temp_history_manager.get_recent_runs_for_image("trend_image.png", count=3)
+        trends = temp_history_manager.get_recent_runs_for_image(
+            "trend_image.png", count=3
+        )
 
         assert len(trends) == 3
         # Should return (timestamp, composite_score) tuples

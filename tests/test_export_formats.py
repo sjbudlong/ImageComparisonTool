@@ -9,11 +9,16 @@ from pathlib import Path
 from datetime import datetime
 
 import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from ImageComparisonSystem.history.database import Database
 from ImageComparisonSystem.annotations.annotation_manager import AnnotationManager
-from ImageComparisonSystem.annotations.export_formats import COCOExporter, YOLOExporter, ExportManager
+from ImageComparisonSystem.annotations.export_formats import (
+    COCOExporter,
+    YOLOExporter,
+    ExportManager,
+)
 
 
 @pytest.fixture
@@ -35,7 +40,16 @@ def populated_database(temp_database):
         """INSERT INTO runs (build_number, timestamp, base_dir, new_dir, known_good_dir,
            config_snapshot, total_images, avg_difference)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        ("test-build", datetime.now().isoformat(), "/test", "/test/new", "/test/known", "{}", 10, 5.0),
+        (
+            "test-build",
+            datetime.now().isoformat(),
+            "/test",
+            "/test/new",
+            "/test/known",
+            "{}",
+            10,
+            5.0,
+        ),
     )
 
     # Insert test results
@@ -43,14 +57,34 @@ def populated_database(temp_database):
         """INSERT INTO results (run_id, filename, subdirectory, new_image_path, known_good_path,
            pixel_difference, ssim_score, composite_score, is_anomaly)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (run_id, "image1.png", "", "/test/new/image1.png", "/test/known/image1.png", 10.0, 0.8, 50.0, 0),
+        (
+            run_id,
+            "image1.png",
+            "",
+            "/test/new/image1.png",
+            "/test/known/image1.png",
+            10.0,
+            0.8,
+            50.0,
+            0,
+        ),
     )
 
     result_id_2 = db.execute_insert(
         """INSERT INTO results (run_id, filename, subdirectory, new_image_path, known_good_path,
            pixel_difference, ssim_score, composite_score, is_anomaly)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (run_id, "image2.png", "subdir", "/test/new/subdir/image2.png", "/test/known/subdir/image2.png", 5.0, 0.9, 20.0, 1),
+        (
+            run_id,
+            "image2.png",
+            "subdir",
+            "/test/new/subdir/image2.png",
+            "/test/known/subdir/image2.png",
+            5.0,
+            0.9,
+            20.0,
+            1,
+        ),
     )
 
     return db, run_id, [result_id_1, result_id_2]
@@ -62,7 +96,7 @@ def annotated_database(populated_database):
     db, run_id, result_ids = populated_database
     manager = AnnotationManager(db)
 
-    # Add bounding box annotation
+    # Add bounding box annotation to first image
     ann_id_1 = manager.add_annotation(
         result_id=result_ids[0],
         annotation_type="bounding_box",
@@ -71,7 +105,7 @@ def annotated_database(populated_database):
         category="rendering_issues",
     )
 
-    # Add polygon annotation
+    # Add polygon annotation to first image
     ann_id_2 = manager.add_annotation(
         result_id=result_ids[0],
         annotation_type="polygon",
@@ -86,23 +120,32 @@ def annotated_database(populated_database):
         label="artifact_2",
     )
 
-    # Add point annotation
+    # Add bounding box annotation to second image (for YOLO export)
     ann_id_3 = manager.add_annotation(
+        result_id=result_ids[1],
+        annotation_type="bounding_box",
+        geometry={"x": 250, "y": 180, "width": 100, "height": 80},
+        label="artifact_3",
+        category="rendering_issues",
+    )
+
+    # Add point annotation to second image
+    ann_id_4 = manager.add_annotation(
         result_id=result_ids[1],
         annotation_type="point",
         geometry={"x": 250, "y": 180},
         label="pixel_issue",
     )
 
-    # Add classification annotation
-    ann_id_4 = manager.add_annotation(
+    # Add classification annotation to second image
+    ann_id_5 = manager.add_annotation(
         result_id=result_ids[1],
         annotation_type="classification",
         label="false_positive",
         confidence=0.95,
     )
 
-    return db, run_id, result_ids, [ann_id_1, ann_id_2, ann_id_3, ann_id_4]
+    return db, run_id, result_ids, [ann_id_1, ann_id_2, ann_id_3, ann_id_4, ann_id_5]
 
 
 @pytest.mark.unit
@@ -143,7 +186,7 @@ class TestCOCOExporter:
             result = exporter.export_run(run_id, output_path)
 
             assert result["success"] is True
-            assert result["annotation_count"] == 4  # 4 annotations total
+            assert result["annotation_count"] == 5  # 5 annotations total
             assert result["image_count"] == 2  # 2 images
             assert result["category_count"] > 0
 
@@ -160,7 +203,7 @@ class TestCOCOExporter:
             assert "categories" in coco_data
 
             assert len(coco_data["images"]) == 2
-            assert len(coco_data["annotations"]) == 4
+            assert len(coco_data["annotations"]) == 5
             assert len(coco_data["categories"]) > 0
 
     def test_coco_structure_validity(self, annotated_database):
@@ -258,8 +301,8 @@ class TestCOCOExporter:
             with open(output_path) as f:
                 coco_data = json.load(f)
 
-            # Find point annotation (third one)
-            point_ann = coco_data["annotations"][2]
+            # Find point annotation (fourth one, after 2 bboxes and 1 polygon)
+            point_ann = coco_data["annotations"][3]
             assert "bbox" in point_ann
             assert point_ann["bbox"] == [250, 180, 1, 1]  # 1x1 bbox
             assert point_ann["area"] == 1
@@ -336,7 +379,9 @@ class TestYOLOExporter:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir) / "labels"
-            result = exporter.export_run(run_id, output_dir, image_width=1920, image_height=1080)
+            result = exporter.export_run(
+                run_id, output_dir, image_width=1920, image_height=1080
+            )
 
             assert result["success"] is True
             assert result["file_count"] == 2  # 2 images with annotations
@@ -543,5 +588,7 @@ class TestExportManager:
 
             # Test YOLO with custom dimensions
             output_dir = Path(tmpdir) / "labels"
-            result = manager.export(run_id, "yolo", output_dir, image_width=640, image_height=480)
+            result = manager.export(
+                run_id, "yolo", output_dir, image_width=640, image_height=480
+            )
             assert result["success"] is True
