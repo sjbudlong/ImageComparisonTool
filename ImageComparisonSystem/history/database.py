@@ -41,7 +41,7 @@ class Database:
         Initialize database with schema if it doesn't exist.
 
         Creates tables, indexes, and default configurations using
-        the v1 initial schema migration.
+        migration files (v1, v2, etc) in sequence.
         """
         try:
             with self.get_connection() as conn:
@@ -49,19 +49,26 @@ class Database:
                 conn.execute("PRAGMA journal_mode=WAL")
                 conn.execute("PRAGMA foreign_keys=ON")
 
-                # Run schema migration
-                schema_path = (
-                    Path(__file__).parent / "migrations" / "v1_initial_schema.sql"
-                )
-                if schema_path.exists():
-                    with open(schema_path, "r", encoding="utf-8") as f:
-                        schema_sql = f.read()
-                    conn.executescript(schema_sql)
+                # Run schema migrations in order
+                migrations_dir = Path(__file__).parent / "migrations"
+                migration_files = sorted(migrations_dir.glob("v*.sql"))
+
+                if not migration_files:
+                    logger.error(f"No migration files found in {migrations_dir}")
+                    raise FileNotFoundError(
+                        f"No migration files found in {migrations_dir}"
+                    )
+
+                for migration_file in migration_files:
+                    logger.debug(f"Applying migration: {migration_file.name}")
+                    with open(migration_file, "r", encoding="utf-8") as f:
+                        migration_sql = f.read()
+                    conn.executescript(migration_sql)
                     conn.commit()
-                    logger.info(f"Database initialized at {self.db_path}")
-                else:
-                    logger.error(f"Schema file not found: {schema_path}")
-                    raise FileNotFoundError(f"Schema file not found: {schema_path}")
+
+                logger.info(
+                    f"Database initialized at {self.db_path} with {len(migration_files)} migration(s)"
+                )
 
                 # Validate database integrity
                 cursor = conn.execute("PRAGMA integrity_check")

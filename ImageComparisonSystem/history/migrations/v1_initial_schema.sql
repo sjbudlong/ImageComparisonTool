@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS runs (
     total_images INTEGER,
     avg_difference REAL,
     max_difference REAL,
-    notes TEXT
+    notes TEXT,
+    commit_hash TEXT  -- Git commit hash for reproducibility
 );
 
 -- Individual image comparison results
@@ -183,6 +184,7 @@ CREATE TABLE IF NOT EXISTS retention_policy (
 -- Performance indexes
 CREATE INDEX IF NOT EXISTS idx_runs_build_number ON runs(build_number);
 CREATE INDEX IF NOT EXISTS idx_runs_timestamp ON runs(timestamp);
+CREATE INDEX IF NOT EXISTS idx_runs_commit_hash ON runs(commit_hash);
 CREATE INDEX IF NOT EXISTS idx_results_run_id ON results(run_id);
 CREATE INDEX IF NOT EXISTS idx_results_filename ON results(filename);
 CREATE INDEX IF NOT EXISTS idx_results_subdirectory ON results(subdirectory);

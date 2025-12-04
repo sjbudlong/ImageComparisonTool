@@ -156,6 +156,12 @@ def parse_arguments() -> Optional[tuple]:
         help="Build number or identifier for this comparison run (for historical tracking)",
     )
     parser.add_argument(
+        "--commit-hash",
+        type=str,
+        default=None,
+        help="Git commit hash for reproducibility (allows recreating exact environment)",
+    )
+    parser.add_argument(
         "--enable-history",
         action="store_true",
         default=None,
@@ -284,6 +290,7 @@ def parse_arguments() -> Optional[tuple]:
                 # Historical tracking
                 enable_history=enable_history,
                 build_number=args.build_number,
+                commit_hash=args.commit_hash,
                 history_db_path=history_db_path,
             ),
             args,

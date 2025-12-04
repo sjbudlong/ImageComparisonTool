@@ -139,6 +139,10 @@ class Config:
     retention_keep_anomalies: bool = True
     """Whether to always preserve runs with detected anomalies during cleanup."""
 
+    # Source code tracking
+    commit_hash: Optional[str] = None
+    """Git commit hash for reproducibility. Allows recreating the exact environment that generated this run."""
+
     def __post_init__(self) -> None:
         """Convert string paths to Path objects and validate.
 

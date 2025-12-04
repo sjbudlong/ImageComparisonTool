@@ -49,10 +49,7 @@ class HistoryManager:
         logger.info(f"HistoryManager initialized with database: {self.db_path}")
 
     def save_run(
-        self,
-        results: List[ComparisonResult],
-        config,
-        notes: Optional[str] = None
+        self, results: List[ComparisonResult], config, notes: Optional[str] = None
     ) -> int:
         """
         Save a comparison run to the database.
@@ -75,7 +72,9 @@ class HistoryManager:
             # Calculate summary statistics
             total_images = len(results)
             if total_images > 0:
-                avg_difference = sum(r.percent_different for r in results) / total_images
+                avg_difference = (
+                    sum(r.percent_different for r in results) / total_images
+                )
                 max_difference = max(r.percent_different for r in results)
             else:
                 avg_difference = 0.0
@@ -94,8 +93,8 @@ class HistoryManager:
             run_id = self.db.execute_insert(
                 """INSERT INTO runs (
                     build_number, timestamp, base_dir, new_dir, known_good_dir,
-                    config_snapshot, total_images, avg_difference, max_difference, notes
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    config_snapshot, total_images, avg_difference, max_difference, notes, commit_hash
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     config.build_number,
                     datetime.now().isoformat(),
@@ -107,6 +106,7 @@ class HistoryManager:
                     avg_difference,
                     max_difference,
                     notes,
+                    config.commit_hash,
                 ),
             )
 
@@ -125,10 +125,7 @@ class HistoryManager:
             raise
 
     def save_results(
-        self,
-        run_id: int,
-        results: List[ComparisonResult],
-        config=None
+        self, run_id: int, results: List[ComparisonResult], config=None
     ) -> int:
         """
         Save comparison results for a run.
@@ -170,48 +167,43 @@ class HistoryManager:
                 color_metrics = metrics.get("Color Difference", {})
                 histogram_metrics = metrics.get("Histogram Analysis", {})
 
-                result_data.append((
-                    run_id,
-                    result.filename,
-                    subdirectory,
-                    str(result.new_image_path),
-                    str(result.known_good_path),
-
-                    # Pixel difference metrics
-                    pixel_metrics.get("percent_different"),
-                    pixel_metrics.get("changed_pixels"),
-                    pixel_metrics.get("mean_absolute_error"),
-                    pixel_metrics.get("max_difference"),
-
-                    # SSIM metrics
-                    ssim_metrics.get("ssim_score"),
-                    ssim_metrics.get("ssim_percentage"),
-
-                    # Color difference metrics
-                    color_metrics.get("mean_color_distance"),
-                    color_metrics.get("max_color_distance"),
-                    color_metrics.get("significant_color_changes"),
-
-                    # Histogram metrics
-                    histogram_metrics.get("red_histogram_correlation"),
-                    histogram_metrics.get("green_histogram_correlation"),
-                    histogram_metrics.get("blue_histogram_correlation"),
-                    histogram_metrics.get("red_histogram_chi_square"),
-                    histogram_metrics.get("green_histogram_chi_square"),
-                    histogram_metrics.get("blue_histogram_chi_square"),
-
-                    # Composite score (if already calculated)
-                    getattr(result, "composite_score", None),
-
-                    # Statistical fields (if already calculated)
-                    getattr(result, "historical_mean", None),
-                    getattr(result, "historical_std_dev", None),
-                    getattr(result, "std_dev_from_mean", None),
-                    getattr(result, "is_anomaly", None),
-
-                    # Full metrics as JSON backup
-                    json.dumps(result.metrics),
-                ))
+                result_data.append(
+                    (
+                        run_id,
+                        result.filename,
+                        subdirectory,
+                        str(result.new_image_path),
+                        str(result.known_good_path),
+                        # Pixel difference metrics
+                        pixel_metrics.get("percent_different"),
+                        pixel_metrics.get("changed_pixels"),
+                        pixel_metrics.get("mean_absolute_error"),
+                        pixel_metrics.get("max_difference"),
+                        # SSIM metrics
+                        ssim_metrics.get("ssim_score"),
+                        ssim_metrics.get("ssim_percentage"),
+                        # Color difference metrics
+                        color_metrics.get("mean_color_distance"),
+                        color_metrics.get("max_color_distance"),
+                        color_metrics.get("significant_color_changes"),
+                        # Histogram metrics
+                        histogram_metrics.get("red_histogram_correlation"),
+                        histogram_metrics.get("green_histogram_correlation"),
+                        histogram_metrics.get("blue_histogram_correlation"),
+                        histogram_metrics.get("red_histogram_chi_square"),
+                        histogram_metrics.get("green_histogram_chi_square"),
+                        histogram_metrics.get("blue_histogram_chi_square"),
+                        # Composite score (if already calculated)
+                        getattr(result, "composite_score", None),
+                        # Statistical fields (if already calculated)
+                        getattr(result, "historical_mean", None),
+                        getattr(result, "historical_std_dev", None),
+                        getattr(result, "std_dev_from_mean", None),
+                        getattr(result, "is_anomaly", None),
+                        # Full metrics as JSON backup
+                        json.dumps(result.metrics),
+                    )
+                )
 
             # Batch insert
             count = self.db.execute_many(
@@ -251,8 +243,7 @@ class HistoryManager:
         """
         try:
             rows = self.db.execute_query(
-                "SELECT * FROM runs WHERE run_id = ?",
-                (run_id,)
+                "SELECT * FROM runs WHERE run_id = ?", (run_id,)
             )
 
             if rows:
@@ -280,7 +271,7 @@ class HistoryManager:
         try:
             rows = self.db.execute_query(
                 "SELECT * FROM runs WHERE build_number = ? ORDER BY timestamp DESC LIMIT 1",
-                (build_number,)
+                (build_number,),
             )
 
             if rows:
@@ -309,7 +300,7 @@ class HistoryManager:
         try:
             rows = self.db.execute_query(
                 "SELECT * FROM results WHERE run_id = ? ORDER BY composite_score DESC",
-                (run_id,)
+                (run_id,),
             )
 
             return [dict(row) for row in rows]
@@ -319,10 +310,7 @@ class HistoryManager:
             return []
 
     def get_history_for_image(
-        self,
-        filename: str,
-        subdirectory: Optional[str] = None,
-        limit: int = 100
+        self, filename: str, subdirectory: Optional[str] = None, limit: int = 100
     ) -> List[Dict[str, Any]]:
         """
         Retrieve historical results for a specific image across all runs.
@@ -386,8 +374,7 @@ class HistoryManager:
         """
         try:
             rows = self.db.execute_query(
-                "SELECT * FROM runs ORDER BY timestamp DESC LIMIT ?",
-                (limit,)
+                "SELECT * FROM runs ORDER BY timestamp DESC LIMIT ?", (limit,)
             )
 
             return [dict(row) for row in rows]
@@ -397,10 +384,7 @@ class HistoryManager:
             return []
 
     def get_recent_runs_for_image(
-        self,
-        filename: str,
-        subdirectory: Optional[str] = None,
-        count: int = 10
+        self, filename: str, subdirectory: Optional[str] = None, count: int = 10
     ) -> List[Tuple[str, float]]:
         """
         Get recent composite scores for an image (for trend analysis).
@@ -453,8 +437,7 @@ class HistoryManager:
         return self.db.get_row_count("results")
 
     def enrich_with_history(
-        self,
-        results: List[ComparisonResult]
+        self, results: List[ComparisonResult]
     ) -> List[ComparisonResult]:
         """
         Enrich comparison results with historical statistics.
@@ -502,7 +485,7 @@ class HistoryManager:
                 history = self.get_history_for_image(
                     result.filename,
                     subdirectory=subdirectory if subdirectory else None,
-                    limit=100  # Last 100 runs
+                    limit=100,  # Last 100 runs
                 )
 
                 # Extract composite scores (excluding None values)
@@ -550,8 +533,7 @@ class HistoryManager:
         """
         try:
             count = self.db.execute_update(
-                "DELETE FROM runs WHERE run_id = ?",
-                (run_id,)
+                "DELETE FROM runs WHERE run_id = ?", (run_id,)
             )
 
             if count > 0:

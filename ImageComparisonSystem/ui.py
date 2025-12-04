@@ -48,7 +48,9 @@ class ComparisonUI:
         main_frame.columnconfigure(1, weight=1)
 
         # Right panel - Historical tracking
-        history_frame = ttk.Frame(container, padding="10", relief="groove", borderwidth=2)
+        history_frame = ttk.Frame(
+            container, padding="10", relief="groove", borderwidth=2
+        )
         history_frame.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
         history_frame.columnconfigure(1, weight=1)
 
@@ -353,9 +355,7 @@ class ComparisonUI:
 
         # Title
         ttk.Label(
-            parent_frame,
-            text="Historical Metrics Tracking",
-            font=("Arial", 14, "bold")
+            parent_frame, text="Historical Metrics Tracking", font=("Arial", 14, "bold")
         ).grid(row=row, column=0, columnspan=3, pady=(0, 15), sticky=tk.W)
 
         # Enable History
@@ -365,7 +365,7 @@ class ComparisonUI:
             parent_frame,
             text="Enable historical metrics tracking",
             variable=self.enable_history_var,
-            command=self._toggle_history_fields
+            command=self._toggle_history_fields,
         ).grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=5)
 
         # Build Number
@@ -377,10 +377,32 @@ class ComparisonUI:
         self.build_number_entry = ttk.Entry(
             parent_frame, textvariable=self.build_number_var, width=30
         )
-        self.build_number_entry.grid(row=row, column=1, sticky=(tk.W, tk.E), padx=5, columnspan=2)
+        self.build_number_entry.grid(
+            row=row, column=1, sticky=(tk.W, tk.E), padx=5, columnspan=2
+        )
+
+        # Commit Hash (for reproducibility)
+        row += 1
+        ttk.Label(parent_frame, text="Commit Hash:").grid(
+            row=row, column=0, sticky=tk.W, pady=5
+        )
+        self.commit_hash_var = tk.StringVar()
+        self.commit_hash_entry = ttk.Entry(
+            parent_frame, textvariable=self.commit_hash_var, width=30
+        )
+        self.commit_hash_entry.grid(
+            row=row, column=1, sticky=(tk.W, tk.E), padx=5, columnspan=2
+        )
+
+        ttk.Label(
+            parent_frame,
+            text="(Optional - Git commit SHA for exact reproducibility)",
+            foreground="gray",
+            font=("Arial", 8),
+        ).grid(row=row + 1, column=0, columnspan=3, sticky=tk.W, pady=(0, 10))
 
         # History Database Path
-        row += 1
+        row += 2
         ttk.Label(parent_frame, text="History DB Path:").grid(
             row=row, column=0, sticky=tk.W, pady=5
         )
@@ -388,14 +410,16 @@ class ComparisonUI:
         self.history_db_entry = ttk.Entry(
             parent_frame, textvariable=self.history_db_var, width=30
         )
-        self.history_db_entry.grid(row=row, column=1, sticky=(tk.W, tk.E), padx=5, columnspan=2)
+        self.history_db_entry.grid(
+            row=row, column=1, sticky=(tk.W, tk.E), padx=5, columnspan=2
+        )
 
         ttk.Label(
             parent_frame,
             text="(Optional - default: <base-dir>/.imgcomp_history/)",
             foreground="gray",
-            font=("Arial", 8)
-        ).grid(row=row+1, column=0, columnspan=3, sticky=tk.W, pady=(0, 10))
+            font=("Arial", 8),
+        ).grid(row=row + 1, column=0, columnspan=3, sticky=tk.W, pady=(0, 10))
 
         # Separator
         row += 2
@@ -406,9 +430,7 @@ class ComparisonUI:
         # Anomaly Detection
         row += 1
         ttk.Label(
-            parent_frame,
-            text="Anomaly Detection",
-            font=("Arial", 12, "bold")
+            parent_frame, text="Anomaly Detection", font=("Arial", 12, "bold")
         ).grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=(0, 10))
 
         row += 1
@@ -425,7 +447,7 @@ class ComparisonUI:
             parent_frame,
             text="(standard deviations)",
             foreground="gray",
-            font=("Arial", 8)
+            font=("Arial", 8),
         ).grid(row=row, column=2, sticky=tk.W)
 
         # Separator
@@ -437,9 +459,7 @@ class ComparisonUI:
         # Data Retention
         row += 1
         ttk.Label(
-            parent_frame,
-            text="Data Retention (Cleanup)",
-            font=("Arial", 12, "bold")
+            parent_frame, text="Data Retention (Cleanup)", font=("Arial", 12, "bold")
         ).grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=(0, 10))
 
         # Keep all runs
@@ -449,7 +469,7 @@ class ComparisonUI:
             parent_frame,
             text="Keep all historical runs",
             variable=self.keep_all_runs_var,
-            command=self._toggle_retention_fields
+            command=self._toggle_retention_fields,
         ).grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=5)
 
         # Max runs to keep
@@ -459,7 +479,7 @@ class ComparisonUI:
         )
         self.max_runs_var = tk.StringVar()
         self.max_runs_entry = ttk.Entry(
-            parent_frame, textvariable=self.max_runs_var, width=10, state='disabled'
+            parent_frame, textvariable=self.max_runs_var, width=10, state="disabled"
         )
         self.max_runs_entry.grid(row=row, column=1, sticky=tk.W, padx=5)
 
@@ -470,7 +490,7 @@ class ComparisonUI:
         )
         self.max_age_days_var = tk.StringVar()
         self.max_age_days_entry = ttk.Entry(
-            parent_frame, textvariable=self.max_age_days_var, width=10, state='disabled'
+            parent_frame, textvariable=self.max_age_days_var, width=10, state="disabled"
         )
         self.max_age_days_entry.grid(row=row, column=1, sticky=tk.W, padx=5)
 
@@ -481,9 +501,11 @@ class ComparisonUI:
             parent_frame,
             text="Always keep annotated results",
             variable=self.keep_annotated_var,
-            state='disabled'
+            state="disabled",
         )
-        self.keep_annotated_check.grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=5)
+        self.keep_annotated_check.grid(
+            row=row, column=0, columnspan=3, sticky=tk.W, pady=5
+        )
 
         # Keep anomalies
         row += 1
@@ -492,9 +514,11 @@ class ComparisonUI:
             parent_frame,
             text="Always keep anomalous results",
             variable=self.keep_anomalies_var,
-            state='disabled'
+            state="disabled",
         )
-        self.keep_anomalies_check.grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=5)
+        self.keep_anomalies_check.grid(
+            row=row, column=0, columnspan=3, sticky=tk.W, pady=5
+        )
 
         # Info text
         row += 1
@@ -509,12 +533,12 @@ class ComparisonUI:
 
     def _toggle_parallel_fields(self):
         """Enable/disable parallel processing fields based on checkbox."""
-        state = 'normal' if self.enable_parallel_var.get() else 'disabled'
+        state = "normal" if self.enable_parallel_var.get() else "disabled"
         self.max_workers_entry.config(state=state)
 
     def _toggle_history_fields(self):
         """Enable/disable history fields based on checkbox."""
-        state = 'normal' if self.enable_history_var.get() else 'disabled'
+        state = "normal" if self.enable_history_var.get() else "disabled"
         self.build_number_entry.config(state=state)
         self.history_db_entry.config(state=state)
         self.anomaly_threshold_entry.config(state=state)
@@ -522,7 +546,7 @@ class ComparisonUI:
 
     def _toggle_retention_fields(self):
         """Enable/disable retention fields based on keep_all_runs checkbox."""
-        state = 'disabled' if self.keep_all_runs_var.get() else 'normal'
+        state = "disabled" if self.keep_all_runs_var.get() else "normal"
         self.max_runs_entry.config(state=state)
         self.max_age_days_entry.config(state=state)
         self.keep_annotated_check.config(state=state)
@@ -598,20 +622,39 @@ class ComparisonUI:
 
             # Parse parallel processing settings
             enable_parallel = self.enable_parallel_var.get()
-            max_workers = int(self.max_workers_var.get()) if self.max_workers_var.get() else None
+            max_workers = (
+                int(self.max_workers_var.get()) if self.max_workers_var.get() else None
+            )
 
             # Parse historical tracking settings
             enable_history = self.enable_history_var.get()
-            build_number = self.build_number_var.get() if self.build_number_var.get() else None
-            history_db_path = Path(self.history_db_var.get()) if self.history_db_var.get() else None
-            anomaly_threshold = float(self.anomaly_threshold_var.get()) if self.anomaly_threshold_var.get() else 2.0
+            build_number = (
+                self.build_number_var.get() if self.build_number_var.get() else None
+            )
+            history_db_path = (
+                Path(self.history_db_var.get()) if self.history_db_var.get() else None
+            )
+            anomaly_threshold = (
+                float(self.anomaly_threshold_var.get())
+                if self.anomaly_threshold_var.get()
+                else 2.0
+            )
 
             # Parse retention settings
             retention_keep_all = self.keep_all_runs_var.get()
-            retention_max_runs = int(self.max_runs_var.get()) if self.max_runs_var.get() else None
-            retention_max_age = int(self.max_age_days_var.get()) if self.max_age_days_var.get() else None
+            retention_max_runs = (
+                int(self.max_runs_var.get()) if self.max_runs_var.get() else None
+            )
+            retention_max_age = (
+                int(self.max_age_days_var.get())
+                if self.max_age_days_var.get()
+                else None
+            )
             retention_keep_annotated = self.keep_annotated_var.get()
             retention_keep_anomalies = self.keep_anomalies_var.get()
+
+            # Get commit hash (optional)
+            commit_hash = self.commit_hash_var.get().strip() or None
 
             self.config = Config(
                 base_dir=Path(self.base_dir_var.get()),
@@ -634,6 +677,7 @@ class ComparisonUI:
                 # Historical tracking settings
                 enable_history=enable_history,
                 build_number=build_number,
+                commit_hash=commit_hash,
                 history_db_path=history_db_path,
                 anomaly_threshold=anomaly_threshold,
                 # Retention policy settings

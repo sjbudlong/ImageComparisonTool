@@ -24,6 +24,7 @@ class MockConfig:
     known_good_dir: str = "known_good"
     history_db_path: Optional[Path] = None
     build_number: Optional[str] = None
+    commit_hash: Optional[str] = None
     pixel_diff_threshold: float = 0.01
     ssim_threshold: float = 0.95
     color_distance_threshold: float = 10.0
@@ -185,6 +186,22 @@ class TestSaveRun:
         saved_results = temp_history_manager.get_results_for_run(run_id)
         assert saved_results[0]["subdirectory"] in ["renders/scene1", "renders/scene2"]
         assert saved_results[1]["subdirectory"] in ["renders/scene1", "renders/scene2"]
+
+    def test_save_run_with_commit_hash(self, temp_history_manager):
+        """Test saving run with commit hash for reproducibility."""
+        config = MockConfig(
+            base_dir=Path("/test/base"),
+            build_number="build-301",
+            commit_hash="abc123def456"
+        )
+
+        results = [create_mock_result("image1.png", 10.0)]
+        run_id = temp_history_manager.save_run(results, config)
+
+        # Retrieve and verify commit hash was saved
+        run = temp_history_manager.get_run(run_id)
+        assert run is not None
+        assert run["commit_hash"] == "abc123def456"
 
 
 class TestQueryRuns:
