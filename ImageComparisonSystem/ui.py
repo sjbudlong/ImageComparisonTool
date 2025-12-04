@@ -26,22 +26,33 @@ class ComparisonUI:
         self.config: Optional[Config] = None
         self.root = tk.Tk()
         self.root.title("Image Comparison Configuration")
-        self.root.geometry("800x1000")
+        self.root.geometry("1400x1000")  # Expanded width for historical tracking panel
         self.root.resizable(True, True)
 
         self._create_widgets()
 
     def _create_widgets(self):
         """Create and layout UI widgets."""
-        # Main frame with padding
-        main_frame = ttk.Frame(self.root, padding="20")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # Main container frame
+        container = ttk.Frame(self.root, padding="20")
+        container.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
+        container.columnconfigure(0, weight=1)
+        container.columnconfigure(1, weight=1)
+
+        # Left panel - Main settings
+        main_frame = ttk.Frame(container, padding="10")
+        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
         main_frame.columnconfigure(1, weight=1)
 
-        # Title
+        # Right panel - Historical tracking
+        history_frame = ttk.Frame(container, padding="10", relief="groove", borderwidth=2)
+        history_frame.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
+        history_frame.columnconfigure(1, weight=1)
+
+        # Title - spans both panels
         title = ttk.Label(
             main_frame,
             text="Image Comparison Configuration",
@@ -321,10 +332,12 @@ class ComparisonUI:
         )
         info_label.grid(row=row, column=0, columnspan=3, pady=(20, 10), sticky=tk.W)
 
-        # Buttons
-        row += 1
-        button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=row, column=0, columnspan=3, pady=(20, 0))
+        # === HISTORICAL TRACKING PANEL (RIGHT SIDE) ===
+        self._create_history_widgets(history_frame)
+
+        # Buttons (in container, spanning both columns)
+        button_frame = ttk.Frame(container)
+        button_frame.grid(row=1, column=0, columnspan=2, pady=(20, 0))
 
         ttk.Button(
             button_frame, text="Start Comparison", command=self._on_start, width=20
@@ -333,6 +346,187 @@ class ComparisonUI:
         ttk.Button(button_frame, text="Cancel", command=self._on_cancel, width=20).pack(
             side=tk.LEFT, padx=5
         )
+
+    def _create_history_widgets(self, parent_frame):
+        """Create historical tracking configuration widgets."""
+        row = 0
+
+        # Title
+        ttk.Label(
+            parent_frame,
+            text="Historical Metrics Tracking",
+            font=("Arial", 14, "bold")
+        ).grid(row=row, column=0, columnspan=3, pady=(0, 15), sticky=tk.W)
+
+        # Enable History
+        row += 1
+        self.enable_history_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            parent_frame,
+            text="Enable historical metrics tracking",
+            variable=self.enable_history_var,
+            command=self._toggle_history_fields
+        ).grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=5)
+
+        # Build Number
+        row += 1
+        ttk.Label(parent_frame, text="Build Number/ID:").grid(
+            row=row, column=0, sticky=tk.W, pady=5
+        )
+        self.build_number_var = tk.StringVar()
+        self.build_number_entry = ttk.Entry(
+            parent_frame, textvariable=self.build_number_var, width=30
+        )
+        self.build_number_entry.grid(row=row, column=1, sticky=(tk.W, tk.E), padx=5, columnspan=2)
+
+        # History Database Path
+        row += 1
+        ttk.Label(parent_frame, text="History DB Path:").grid(
+            row=row, column=0, sticky=tk.W, pady=5
+        )
+        self.history_db_var = tk.StringVar()
+        self.history_db_entry = ttk.Entry(
+            parent_frame, textvariable=self.history_db_var, width=30
+        )
+        self.history_db_entry.grid(row=row, column=1, sticky=(tk.W, tk.E), padx=5, columnspan=2)
+
+        ttk.Label(
+            parent_frame,
+            text="(Optional - default: <base-dir>/.imgcomp_history/)",
+            foreground="gray",
+            font=("Arial", 8)
+        ).grid(row=row+1, column=0, columnspan=3, sticky=tk.W, pady=(0, 10))
+
+        # Separator
+        row += 2
+        ttk.Separator(parent_frame, orient="horizontal").grid(
+            row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=15
+        )
+
+        # Anomaly Detection
+        row += 1
+        ttk.Label(
+            parent_frame,
+            text="Anomaly Detection",
+            font=("Arial", 12, "bold")
+        ).grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=(0, 10))
+
+        row += 1
+        ttk.Label(parent_frame, text="Anomaly Threshold (σ):").grid(
+            row=row, column=0, sticky=tk.W, pady=5
+        )
+        self.anomaly_threshold_var = tk.StringVar(value="2.0")
+        self.anomaly_threshold_entry = ttk.Entry(
+            parent_frame, textvariable=self.anomaly_threshold_var, width=10
+        )
+        self.anomaly_threshold_entry.grid(row=row, column=1, sticky=tk.W, padx=5)
+
+        ttk.Label(
+            parent_frame,
+            text="(standard deviations)",
+            foreground="gray",
+            font=("Arial", 8)
+        ).grid(row=row, column=2, sticky=tk.W)
+
+        # Separator
+        row += 1
+        ttk.Separator(parent_frame, orient="horizontal").grid(
+            row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=15
+        )
+
+        # Data Retention
+        row += 1
+        ttk.Label(
+            parent_frame,
+            text="Data Retention (Cleanup)",
+            font=("Arial", 12, "bold")
+        ).grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=(0, 10))
+
+        # Keep all runs
+        row += 1
+        self.keep_all_runs_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            parent_frame,
+            text="Keep all historical runs",
+            variable=self.keep_all_runs_var,
+            command=self._toggle_retention_fields
+        ).grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=5)
+
+        # Max runs to keep
+        row += 1
+        ttk.Label(parent_frame, text="Max Runs to Keep:").grid(
+            row=row, column=0, sticky=tk.W, pady=5
+        )
+        self.max_runs_var = tk.StringVar()
+        self.max_runs_entry = ttk.Entry(
+            parent_frame, textvariable=self.max_runs_var, width=10, state='disabled'
+        )
+        self.max_runs_entry.grid(row=row, column=1, sticky=tk.W, padx=5)
+
+        # Max age in days
+        row += 1
+        ttk.Label(parent_frame, text="Max Age (days):").grid(
+            row=row, column=0, sticky=tk.W, pady=5
+        )
+        self.max_age_days_var = tk.StringVar()
+        self.max_age_days_entry = ttk.Entry(
+            parent_frame, textvariable=self.max_age_days_var, width=10, state='disabled'
+        )
+        self.max_age_days_entry.grid(row=row, column=1, sticky=tk.W, padx=5)
+
+        # Keep annotated
+        row += 1
+        self.keep_annotated_var = tk.BooleanVar(value=True)
+        self.keep_annotated_check = ttk.Checkbutton(
+            parent_frame,
+            text="Always keep annotated results",
+            variable=self.keep_annotated_var,
+            state='disabled'
+        )
+        self.keep_annotated_check.grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=5)
+
+        # Keep anomalies
+        row += 1
+        self.keep_anomalies_var = tk.BooleanVar(value=True)
+        self.keep_anomalies_check = ttk.Checkbutton(
+            parent_frame,
+            text="Always keep anomalous results",
+            variable=self.keep_anomalies_var,
+            state='disabled'
+        )
+        self.keep_anomalies_check.grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=5)
+
+        # Info text
+        row += 1
+        info_text = (
+            "Historical tracking stores metrics in a SQLite database for "
+            "trend analysis and anomaly detection. Build number helps identify runs."
+        )
+        info_label = ttk.Label(
+            parent_frame, text=info_text, foreground="gray", wraplength=400
+        )
+        info_label.grid(row=row, column=0, columnspan=3, pady=(20, 10), sticky=tk.W)
+
+    def _toggle_parallel_fields(self):
+        """Enable/disable parallel processing fields based on checkbox."""
+        state = 'normal' if self.enable_parallel_var.get() else 'disabled'
+        self.max_workers_entry.config(state=state)
+
+    def _toggle_history_fields(self):
+        """Enable/disable history fields based on checkbox."""
+        state = 'normal' if self.enable_history_var.get() else 'disabled'
+        self.build_number_entry.config(state=state)
+        self.history_db_entry.config(state=state)
+        self.anomaly_threshold_entry.config(state=state)
+        # Don't disable retention fields here - they have their own toggle
+
+    def _toggle_retention_fields(self):
+        """Enable/disable retention fields based on keep_all_runs checkbox."""
+        state = 'disabled' if self.keep_all_runs_var.get() else 'normal'
+        self.max_runs_entry.config(state=state)
+        self.max_age_days_entry.config(state=state)
+        self.keep_annotated_check.config(state=state)
+        self.keep_anomalies_check.config(state=state)
 
     def _update_color_preview(self, *args):
         """Update the color preview box."""
@@ -402,6 +596,23 @@ class ComparisonUI:
                 show_rgb=self.hist_show_rgb_var.get(),
             )
 
+            # Parse parallel processing settings
+            enable_parallel = self.enable_parallel_var.get()
+            max_workers = int(self.max_workers_var.get()) if self.max_workers_var.get() else None
+
+            # Parse historical tracking settings
+            enable_history = self.enable_history_var.get()
+            build_number = self.build_number_var.get() if self.build_number_var.get() else None
+            history_db_path = Path(self.history_db_var.get()) if self.history_db_var.get() else None
+            anomaly_threshold = float(self.anomaly_threshold_var.get()) if self.anomaly_threshold_var.get() else 2.0
+
+            # Parse retention settings
+            retention_keep_all = self.keep_all_runs_var.get()
+            retention_max_runs = int(self.max_runs_var.get()) if self.max_runs_var.get() else None
+            retention_max_age = int(self.max_age_days_var.get()) if self.max_age_days_var.get() else None
+            retention_keep_annotated = self.keep_annotated_var.get()
+            retention_keep_anomalies = self.keep_anomalies_var.get()
+
             self.config = Config(
                 base_dir=Path(self.base_dir_var.get()),
                 new_dir=self.new_dir_var.get(),
@@ -417,6 +628,20 @@ class ComparisonUI:
                 highlight_color=highlight_color,
                 diff_enhancement_factor=diff_enhancement,
                 histogram_config=hist_config,
+                # Parallel processing settings
+                enable_parallel=enable_parallel,
+                max_workers=max_workers,
+                # Historical tracking settings
+                enable_history=enable_history,
+                build_number=build_number,
+                history_db_path=history_db_path,
+                anomaly_threshold=anomaly_threshold,
+                # Retention policy settings
+                retention_keep_all=retention_keep_all,
+                retention_max_runs=retention_max_runs,
+                retention_max_age_days=retention_max_age,
+                retention_keep_annotated=retention_keep_annotated,
+                retention_keep_anomalies=retention_keep_anomalies,
             )
 
             # Validate config

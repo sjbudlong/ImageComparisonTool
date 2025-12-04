@@ -16,10 +16,26 @@ __license__ = "MIT"
 
 from .config import Config
 from .models import ComparisonResult
-from .comparator import ImageComparator
-from .processor import ImageProcessor
 from .report_generator import ReportGenerator
 from .markdown_exporter import MarkdownExporter
+
+# Lazy imports for modules that require optional dependencies
+def _get_comparator():
+    from .comparator import ImageComparator
+    return ImageComparator
+
+def _get_processor():
+    from .processor import ImageProcessor
+    return ImageProcessor
+
+# Try to import comparator and processor, but don't fail if dependencies missing
+try:
+    from .comparator import ImageComparator
+    from .processor import ImageProcessor
+except ImportError:
+    # These require skimage - make them lazy imports
+    ImageComparator = None
+    ImageProcessor = None
 
 __all__ = [
     "Config",

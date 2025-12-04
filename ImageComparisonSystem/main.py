@@ -12,7 +12,9 @@ from typing import Optional
 import webbrowser
 from config import Config
 from ui import ComparisonUI
-from comparator import ImageComparator
+
+# Don't import ImageComparator here - it requires skimage
+# We'll import it later when we actually need it
 
 # Setup logging as early as possible
 from logging_config import setup_logging, LOG_LEVELS
@@ -146,6 +148,87 @@ def parse_arguments() -> Optional[tuple]:
         help="Maximum number of parallel workers (default: CPU count)",
     )
 
+    # Historical tracking arguments
+    parser.add_argument(
+        "--build-number",
+        type=str,
+        default=None,
+        help="Build number or identifier for this comparison run (for historical tracking)",
+    )
+    parser.add_argument(
+        "--enable-history",
+        action="store_true",
+        default=None,
+        help="Enable historical metrics tracking (default: enabled)",
+    )
+    parser.add_argument(
+        "--no-history",
+        dest="enable_history",
+        action="store_false",
+        help="Disable historical metrics tracking",
+    )
+    parser.add_argument(
+        "--history-db",
+        type=str,
+        default=None,
+        help="Path to history database (default: <base-dir>/.imgcomp_history/comparison_history.db)",
+    )
+
+    # Retention/cleanup arguments
+    parser.add_argument(
+        "--cleanup-history",
+        action="store_true",
+        help="Run retention policy to clean up old historical data",
+    )
+    parser.add_argument(
+        "--max-runs",
+        type=int,
+        default=None,
+        help="Maximum number of runs to keep (used with --cleanup-history)",
+    )
+    parser.add_argument(
+        "--max-age-days",
+        type=int,
+        default=None,
+        help="Maximum age in days for runs to keep (used with --cleanup-history)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be deleted without actually deleting (used with --cleanup-history)",
+    )
+    parser.add_argument(
+        "--history-stats",
+        action="store_true",
+        help="Display database statistics and exit",
+    )
+
+    # Annotation export arguments
+    parser.add_argument(
+        "--export-annotations",
+        action="store_true",
+        help="Export annotations for ML training",
+    )
+    parser.add_argument(
+        "--export-run-id",
+        type=int,
+        default=None,
+        help="Run ID to export annotations for (default: most recent run)",
+    )
+    parser.add_argument(
+        "--export-format",
+        type=str,
+        default="coco",
+        choices=["coco", "yolo"],
+        help="Annotation export format (default: coco)",
+    )
+    parser.add_argument(
+        "--export-output",
+        type=str,
+        default=None,
+        help="Output path for exported annotations (default: .imgcomp_history/exports/)",
+    )
+
     args = parser.parse_args()
 
     # If --gui flag is set, skip CLI mode and return None to trigger GUI
@@ -171,6 +254,16 @@ def parse_arguments() -> Optional[tuple]:
         elif args.use_histogram_eq:
             use_hist_eq = True
 
+        # Determine history setting (default: True unless explicitly disabled)
+        enable_history = True
+        if args.enable_history is False:
+            enable_history = False
+        elif args.enable_history is True:
+            enable_history = True
+
+        # Convert history_db path to Path if provided
+        history_db_path = Path(args.history_db) if args.history_db else None
+
         return (
             Config(
                 base_dir=Path(args.base_dir),
@@ -188,9 +281,184 @@ def parse_arguments() -> Optional[tuple]:
                 diff_enhancement_factor=args.diff_enhancement,
                 enable_parallel=args.parallel,
                 max_workers=args.max_workers,
+                # Historical tracking
+                enable_history=enable_history,
+                build_number=args.build_number,
+                history_db_path=history_db_path,
             ),
             args,
         )
+
+
+def handle_history_commands(args, base_dir: Path) -> bool:
+    """
+    Handle history-related commands (cleanup, statistics).
+
+    Args:
+        args: Parsed command line arguments
+        base_dir: Base directory for locating history database
+
+    Returns:
+        True if a history command was handled (should exit), False otherwise
+    """
+    # Determine database path
+    if args.history_db:
+        db_path = Path(args.history_db)
+    else:
+        db_path = base_dir / ".imgcomp_history" / "comparison_history.db"
+
+    # Check if database exists
+    if not db_path.exists():
+        logger.error(f"History database not found: {db_path}")
+        logger.info("Run a comparison with --enable-history to create the database first")
+        return True
+
+    # Import history modules
+    try:
+        from history import Database, RetentionPolicy
+    except ImportError as e:
+        logger.error(f"Failed to import history modules: {e}")
+        return True
+
+    # Initialize database
+    try:
+        db = Database(db_path)
+        logger.info(f"Connected to history database: {db_path}")
+    except Exception as e:
+        logger.error(f"Failed to connect to database: {e}")
+        return True
+
+    # Handle --history-stats
+    if args.history_stats:
+        logger.info("=== Database Statistics ===")
+        policy = RetentionPolicy(db, keep_all_runs=True)
+        stats = policy.get_statistics()
+
+        logger.info(f"Total runs: {stats['total_runs']}")
+        logger.info(f"Total results: {stats['total_results']}")
+        logger.info(f"Runs with annotations: {stats['annotated_runs']}")
+        logger.info(f"Runs with anomalies: {stats['anomalous_runs']}")
+
+        if stats['oldest_run']:
+            logger.info(f"Oldest run: {stats['oldest_run']}")
+            logger.info(f"Newest run: {stats['newest_run']}")
+
+        return True
+
+    # Handle --cleanup-history
+    if args.cleanup_history:
+        # Determine retention policy
+        keep_all = not (args.max_runs or args.max_age_days)
+
+        if keep_all:
+            logger.warning("No retention limits specified (--max-runs or --max-age-days)")
+            logger.info("Use --max-runs N or --max-age-days N to set retention limits")
+            return True
+
+        logger.info("=== Retention Policy Cleanup ===")
+        logger.info(f"Keep all runs: {keep_all}")
+        if args.max_runs:
+            logger.info(f"Max runs to keep: {args.max_runs}")
+        if args.max_age_days:
+            logger.info(f"Max age in days: {args.max_age_days}")
+        logger.info(f"Dry run: {args.dry_run}")
+
+        # Create retention policy
+        policy = RetentionPolicy(
+            database=db,
+            keep_all_runs=keep_all,
+            max_runs_to_keep=args.max_runs,
+            max_age_days=args.max_age_days,
+            keep_annotated=True,
+            keep_anomalies=True,
+        )
+
+        # Apply retention
+        result = policy.apply_retention(dry_run=args.dry_run)
+
+        logger.info(f"Runs evaluated: {result['runs_evaluated']}")
+        logger.info(f"Runs eligible for deletion: {result['runs_eligible']}")
+        logger.info(f"Runs protected: {result['runs_protected']}")
+
+        if args.dry_run:
+            logger.info(f"Would delete: {result['runs_deleted']} runs")
+            if result['run_ids_deleted']:
+                logger.info(f"Run IDs: {result['run_ids_deleted']}")
+        else:
+            logger.info(f"Deleted: {result['runs_deleted']} runs")
+            if result['runs_deleted'] > 0:
+                logger.info("Database cleanup complete!")
+
+        return True
+
+    # Handle --export-annotations
+    if args.export_annotations:
+        logger.info("=== Export Annotations ===")
+
+        # Import annotation modules
+        try:
+            from annotations import ExportManager
+        except ImportError as e:
+            logger.error(f"Failed to import annotation modules: {e}")
+            return True
+
+        # Determine run_id
+        run_id = args.export_run_id
+        if run_id is None:
+            # Get most recent run
+            try:
+                rows = db.execute_query("SELECT run_id FROM runs ORDER BY timestamp DESC LIMIT 1")
+                if rows:
+                    run_id = rows[0]["run_id"]
+                    logger.info(f"Using most recent run: {run_id}")
+                else:
+                    logger.error("No runs found in database")
+                    return True
+            except Exception as e:
+                logger.error(f"Failed to query recent run: {e}")
+                return True
+
+        # Determine output path
+        export_format = args.export_format.lower()
+        if args.export_output:
+            output_path = Path(args.export_output)
+        else:
+            # Default: .imgcomp_history/exports/
+            exports_dir = base_dir / ".imgcomp_history" / "exports"
+            if export_format == "coco":
+                output_path = exports_dir / f"annotations_run_{run_id}.json"
+            else:  # yolo
+                output_path = exports_dir / f"labels_run_{run_id}"
+
+        # Export annotations
+        try:
+            export_manager = ExportManager(db, base_dir)
+            logger.info(f"Exporting annotations for run {run_id} in {export_format.upper()} format")
+            logger.info(f"Output: {output_path}")
+
+            result = export_manager.export(run_id, export_format, output_path)
+
+            if result["success"]:
+                logger.info(f"Export successful!")
+                logger.info(f"  Annotations: {result['annotation_count']}")
+                if export_format == "coco":
+                    logger.info(f"  Images: {result['image_count']}")
+                    logger.info(f"  Categories: {result['category_count']}")
+                else:  # yolo
+                    logger.info(f"  Label files: {result['file_count']}")
+                    logger.info(f"  Classes: {result['class_count']}")
+                logger.info(f"  Output: {result['output_path']}")
+            else:
+                logger.warning("Export completed with no annotations found")
+        except Exception as e:
+            logger.error(f"Failed to export annotations: {e}")
+            import traceback
+            traceback.print_exc()
+            return True
+
+        return True
+
+    return False
 
 
 def main():
@@ -240,6 +508,32 @@ def main():
     config = parse_arguments()
 
     if config is None:
+        # Check if history commands were requested
+        if "--cleanup-history" in sys.argv or "--history-stats" in sys.argv or "--export-annotations" in sys.argv:
+            # Need base-dir for history commands
+            if "--base-dir" not in sys.argv:
+                logger.error("--base-dir is required for history commands")
+                sys.exit(1)
+
+            # Re-parse to get args
+            parser = argparse.ArgumentParser()
+            parser.add_argument("--base-dir", type=str, required=False)
+            parser.add_argument("--history-db", type=str, default=None)
+            parser.add_argument("--cleanup-history", action="store_true")
+            parser.add_argument("--max-runs", type=int, default=None)
+            parser.add_argument("--max-age-days", type=int, default=None)
+            parser.add_argument("--dry-run", action="store_true")
+            parser.add_argument("--history-stats", action="store_true")
+            parser.add_argument("--export-annotations", action="store_true")
+            parser.add_argument("--export-run-id", type=int, default=None)
+            parser.add_argument("--export-format", type=str, default="coco")
+            parser.add_argument("--export-output", type=str, default=None)
+            temp_args, _ = parser.parse_known_args()
+
+            if temp_args.base_dir:
+                if handle_history_commands(temp_args, Path(temp_args.base_dir)):
+                    return
+
         # Launch UI if not all arguments provided
         logger.info("Launching UI (not all command line arguments provided)...")
         ui = ComparisonUI()
@@ -253,6 +547,11 @@ def main():
     else:
         config, args = config
         open_report_flag = args.open_report
+
+        # Handle history commands before running comparison
+        if args.cleanup_history or args.history_stats:
+            if handle_history_commands(args, config.base_dir):
+                return
 
     # Run the comparison
     logger.info("Starting image comparison...")
@@ -268,6 +567,15 @@ def main():
     if config.enable_parallel:
         logger.info(f"Max workers: {config.max_workers or 'CPU count'}")
     logger.info(f"Output will be saved to: {config.html_dir}")
+
+    # Import ImageComparator only when needed (requires skimage)
+    try:
+        from comparator import ImageComparator
+    except ImportError as e:
+        logger.error("Failed to import ImageComparator. This usually means scikit-image is not installed.")
+        logger.error("Please install scikit-image: pip install scikit-image")
+        logger.error(f"Error: {e}")
+        sys.exit(1)
 
     comparator = ImageComparator(config)
 

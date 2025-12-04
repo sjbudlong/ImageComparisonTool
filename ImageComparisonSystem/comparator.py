@@ -17,6 +17,7 @@ try:
     from .report_generator import ReportGenerator
     from .markdown_exporter import MarkdownExporter
     from .models import ComparisonResult
+    from .history import Database, HistoryManager
 except ImportError:
     from config import Config  # type: ignore
     from analyzers import AnalyzerRegistry  # type: ignore
@@ -24,6 +25,11 @@ except ImportError:
     from report_generator import ReportGenerator  # type: ignore
     from markdown_exporter import MarkdownExporter  # type: ignore
     from models import ComparisonResult  # type: ignore
+    try:
+        from history import Database, HistoryManager  # type: ignore
+    except (ImportError, ValueError):
+        Database = None  # type: ignore
+        HistoryManager = None  # type: ignore
 
 logger = logging.getLogger("ImageComparison")
 
@@ -45,6 +51,21 @@ class ImageComparator:
         self.analyzer_registry: AnalyzerRegistry = AnalyzerRegistry(config)
         self.processor: ImageProcessor = ImageProcessor(config)
         self.report_generator: ReportGenerator = ReportGenerator(config)
+
+        # Initialize history manager if enabled
+        self.history_manager: Optional[HistoryManager] = None
+        if config.enable_history and HistoryManager is not None:
+            try:
+                # Initialize database
+                db = Database(config.history_db_path)
+                self.history_manager = HistoryManager(db, config)
+                logger.info(f"History tracking enabled: {config.history_db_path}")
+                if config.build_number:
+                    logger.info(f"Build number: {config.build_number}")
+            except Exception as e:
+                logger.warning(f"Failed to initialize history tracking: {e}")
+                logger.warning("Continuing without history tracking")
+                self.history_manager = None
 
         # Ensure output directories exist
         self.config.diff_path.mkdir(parents=True, exist_ok=True)
@@ -419,6 +440,34 @@ class ImageComparator:
 
         # Sort by percent difference (descending)
         results.sort(key=lambda x: x.percent_different, reverse=True)
+
+        # Save to history database and enrich with historical analysis
+        if self.history_manager:
+            try:
+                logger.info("Saving results to history database...")
+                run_id = self.history_manager.save_run(results, self.config)
+                logger.info(f"Results saved (run_id: {run_id})")
+
+                logger.info("Enriching results with historical analysis...")
+                results = self.history_manager.enrich_with_history(results)
+
+                # Log anomalies if any were detected
+                anomalies = [r for r in results if hasattr(r, 'is_anomaly') and r.is_anomaly]
+                if anomalies:
+                    logger.warning(f"Detected {len(anomalies)} statistical anomalies:")
+                    for result in anomalies[:5]:  # Show first 5
+                        logger.warning(
+                            f"  - {result.filename}: {result.std_dev_from_mean:.1f}σ "
+                            f"from mean (score: {result.composite_score:.1f})"
+                        )
+                    if len(anomalies) > 5:
+                        logger.warning(f"  ... and {len(anomalies) - 5} more")
+                else:
+                    logger.info("No statistical anomalies detected")
+
+            except Exception as e:
+                logger.error(f"History tracking failed: {e}")
+                logger.warning("Continuing without history data")
 
         # Generate reports
         logger.info("Generating reports...")
