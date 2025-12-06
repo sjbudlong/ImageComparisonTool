@@ -9,6 +9,19 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING
 import numpy as np
 from skimage.metrics import structural_similarity as ssim
 
+# Optional FLIP import with graceful degradation
+try:
+    from flip_evaluator import evaluate as flip_evaluate
+    FLIP_AVAILABLE = True
+except ImportError:
+    FLIP_AVAILABLE = False
+    flip_evaluate = None
+    logger_flip = logging.getLogger("ImageComparison")
+    logger_flip.warning(
+        "NVIDIA FLIP not installed. FLIP analysis disabled. "
+        "Install with: pip install flip-evaluator"
+    )
+
 if TYPE_CHECKING:
     from config import Config
 
@@ -245,6 +258,155 @@ class HistogramAnalyzer(ImageAnalyzer):
         return results
 
 
+class FLIPAnalyzer(ImageAnalyzer):
+    """
+    Analyzes perceptual differences using NVIDIA FLIP metric.
+
+    FLIP (FLaws in Luminance and Pixels) is a perceptual image comparison metric
+    that accounts for:
+    - Spatial frequency sensitivity (Contrast Sensitivity Function)
+    - Viewing distance (pixels per degree)
+    - Luminance adaptation
+    - Chrominance handling
+
+    Superior to SSIM for rendering quality assessment and perceptual analysis.
+    Designed for VFX, gaming, and 3D rendering workflows.
+    """
+
+    def __init__(self, pixels_per_degree: float = 67.0) -> None:
+        """
+        Initialize FLIP analyzer.
+
+        Args:
+            pixels_per_degree: Viewing distance parameter. Default 67.0 corresponds
+                to 0.7m viewing distance on a 24" 1080p display.
+
+        Raises:
+            ImportError: If NVIDIA FLIP package is not installed
+        """
+        if not FLIP_AVAILABLE:
+            raise ImportError(
+                "NVIDIA FLIP not installed. Install with: pip install flip-evaluator"
+            )
+        self.pixels_per_degree: float = pixels_per_degree
+
+    @property
+    def name(self) -> str:
+        return "FLIP Perceptual Metric"
+
+    def analyze(self, img1: np.ndarray, img2: np.ndarray) -> Dict[str, Any]:
+        """
+        Calculate FLIP perceptual metrics.
+
+        Args:
+            img1: First image as numpy array (uint8, RGB or grayscale)
+            img2: Second image as numpy array (uint8, RGB or grayscale)
+
+        Returns:
+            Dictionary containing:
+                - flip_mean: Mean FLIP error across all pixels
+                - flip_max: Maximum FLIP error value
+                - flip_weighted_median: Median of non-zero FLIP errors
+                - flip_percentile_95: 95th percentile FLIP error
+                - flip_percentile_99: 99th percentile FLIP error
+                - flip_error_map_array: Full FLIP error map for visualization
+                - pixels_per_degree: Viewing distance parameter used
+                - flip_quality_description: Human-readable quality assessment
+        """
+        logger.debug(f"Analyzing FLIP with pixels_per_degree={self.pixels_per_degree}")
+
+        # Convert to float32 [0, 1] range as required by FLIP
+        img1_float = img1.astype(np.float32) / 255.0
+        img2_float = img2.astype(np.float32) / 255.0
+
+        # Handle grayscale images by converting to RGB
+        if len(img1_float.shape) == 2:
+            img1_float = np.stack([img1_float] * 3, axis=-1)
+        if len(img2_float.shape) == 2:
+            img2_float = np.stack([img2_float] * 3, axis=-1)
+
+        # Calculate FLIP error map
+        # Note: flip_evaluate returns (error_map, mean_error, parameters_used)
+        # where error_map has values in [0, 1]: 0 = identical, 1 = maximum perceptual difference
+        flip_result = flip_evaluate(
+            reference=img1_float,
+            test=img2_float,
+            dynamicRangeString="LDR",  # Low Dynamic Range (images in [0, 1])
+            inputsRGB=True,  # Images are in sRGB color space
+            applyMagma=False,  # Don't apply colormap, we'll do that separately
+            computeMeanError=True,  # Compute mean FLIP error
+            parameters={"ppd": self.pixels_per_degree}  # Pixels per degree parameter
+        )
+
+        # Unpack results: (error_map, mean_error, parameters_dict)
+        flip_map, flip_mean_computed, _ = flip_result
+
+        # Error map is (H, W, 1), squeeze to (H, W)
+        if len(flip_map.shape) == 3 and flip_map.shape[2] == 1:
+            flip_map = np.squeeze(flip_map, axis=2)
+
+        # Calculate statistics
+        flip_mean = float(flip_mean_computed) if flip_mean_computed >= 0 else float(np.mean(flip_map))
+        flip_max = float(np.max(flip_map))
+
+        # Calculate weighted median (only considering non-zero errors)
+        non_zero_errors = flip_map[flip_map > 0]
+        flip_weighted_median = (
+            float(np.median(non_zero_errors))
+            if len(non_zero_errors) > 0
+            else 0.0
+        )
+
+        # Calculate percentiles
+        flip_percentile_95 = float(np.percentile(flip_map, 95))
+        flip_percentile_99 = float(np.percentile(flip_map, 99))
+
+        # Quality description
+        quality_description = self._describe_flip(flip_mean)
+
+        logger.info(
+            f"FLIP analysis complete: mean={flip_mean:.6f}, max={flip_max:.6f}, "
+            f"quality={quality_description}"
+        )
+
+        return {
+            "flip_mean": round(flip_mean, 6),
+            "flip_max": round(flip_max, 6),
+            "flip_weighted_median": round(flip_weighted_median, 6),
+            "flip_percentile_95": round(flip_percentile_95, 6),
+            "flip_percentile_99": round(flip_percentile_99, 6),
+            "flip_error_map_array": flip_map,  # Keep full precision for visualization
+            "pixels_per_degree": self.pixels_per_degree,
+            "flip_quality_description": quality_description,
+        }
+
+    def _describe_flip(self, flip_mean: float) -> str:
+        """
+        Provide human-readable description of FLIP score.
+
+        FLIP values range from 0 (identical) to 1 (maximum perceptual difference).
+        Thresholds based on perceptual research and industry standards.
+
+        Args:
+            flip_mean: Mean FLIP error value
+
+        Returns:
+            Human-readable quality description
+        """
+        if flip_mean <= 0.01:
+            return "Imperceptible differences"
+        elif flip_mean <= 0.05:
+            return "Just noticeable differences"
+        elif flip_mean <= 0.10:
+            return "Slight perceptual differences"
+        elif flip_mean <= 0.20:
+            return "Moderate perceptual differences"
+        elif flip_mean <= 0.40:
+            return "Noticeable perceptual differences"
+        else:
+            return "Significant perceptual differences"
+
+
 class AnalyzerRegistry:
     """Registry for managing image analyzers."""
 
@@ -278,6 +440,15 @@ class AnalyzerRegistry:
             self.register(ColorDifferenceAnalyzer())
 
         self.register(StructuralSimilarityAnalyzer())
+
+        # Register FLIP analyzer if available and enabled
+        if FLIP_AVAILABLE and self.config and self.config.enable_flip:
+            try:
+                flip_ppd = self.config.flip_pixels_per_degree
+                self.register(FLIPAnalyzer(pixels_per_degree=flip_ppd))
+                logger.info(f"FLIP analyzer registered (pixels_per_degree={flip_ppd})")
+            except Exception as e:
+                logger.warning(f"Failed to register FLIP analyzer: {e}")
 
     def register(self, analyzer: ImageAnalyzer) -> None:
         """

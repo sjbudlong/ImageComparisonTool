@@ -26,7 +26,7 @@ class ComparisonUI:
         self.config: Optional[Config] = None
         self.root = tk.Tk()
         self.root.title("Image Comparison Configuration")
-        self.root.geometry("1400x1000")  # Expanded width for historical tracking panel
+        self.root.geometry("1400x1050")  # Expanded width for historical tracking panel
         self.root.resizable(True, True)
 
         self._create_widgets()
@@ -321,8 +321,7 @@ class ComparisonUI:
             text="Show RGB Channel Histograms",
             variable=self.hist_show_rgb_var,
         ).grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=5)
-
-        # Info text
+        
         row += 1
         info_text = (
             "Note: New Images and Known Good directories should contain "
@@ -520,6 +519,133 @@ class ComparisonUI:
             row=row, column=0, columnspan=3, sticky=tk.W, pady=5
         )
 
+        # Separator for FLIP settings
+        row += 1
+        ttk.Separator(parent_frame, orient="horizontal").grid(
+            row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=15
+        )
+
+        row += 1
+        ttk.Label(
+            parent_frame, text="FLIP Perceptual Metric (Optional)", font=("Arial", 12, "bold")
+        ).grid(row=row, column=0, columnspan=3, sticky=tk.W)
+
+        # Enable FLIP
+        row += 1
+        self.enable_flip_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            parent_frame,
+            text="Enable NVIDIA FLIP perceptual analysis (requires flip-evaluator package)",
+            variable=self.enable_flip_var,
+            command=self._toggle_flip_fields,
+        ).grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=5)
+
+        # FLIP Pixels Per Degree
+        row += 1
+        ttk.Label(parent_frame, text="Pixels Per Degree:").grid(
+            row=row, column=0, sticky=tk.W, pady=5
+        )
+        self.flip_ppd_var = tk.StringVar(value="67.0")
+        self.flip_ppd_entry = ttk.Entry(
+            parent_frame, textvariable=self.flip_ppd_var, width=50, state="disabled"
+        )
+        self.flip_ppd_entry.grid(row=row, column=1, sticky=(tk.W, tk.E), padx=5)
+
+        ttk.Label(
+            parent_frame,
+            text="(67.0 = 0.7m viewing distance on 24\" 1080p display)",
+            foreground="gray",
+            font=("Arial", 8),
+        ).grid(row=row + 1, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
+
+        # FLIP Colormaps
+        row += 2
+        ttk.Label(parent_frame, text="FLIP Heatmap Colormaps:").grid(
+            row=row, column=0, sticky=tk.W, pady=5
+        )
+
+        # Colormap checkboxes
+        colormap_frame = ttk.Frame(parent_frame)
+        colormap_frame.grid(row=row, column=1, sticky=(tk.W, tk.E), padx=5)
+
+        self.flip_viridis_var = tk.BooleanVar(value=True)
+        self.flip_viridis_check = ttk.Checkbutton(
+            colormap_frame, text="viridis", variable=self.flip_viridis_var, state="disabled"
+        )
+        self.flip_viridis_check.pack(side=tk.LEFT, padx=5)
+
+        self.flip_jet_var = tk.BooleanVar(value=False)
+        self.flip_jet_check = ttk.Checkbutton(
+            colormap_frame, text="jet", variable=self.flip_jet_var, state="disabled"
+        )
+        self.flip_jet_check.pack(side=tk.LEFT, padx=5)
+
+        self.flip_turbo_var = tk.BooleanVar(value=False)
+        self.flip_turbo_check = ttk.Checkbutton(
+            colormap_frame, text="turbo", variable=self.flip_turbo_var, state="disabled"
+        )
+        self.flip_turbo_check.pack(side=tk.LEFT, padx=5)
+
+        self.flip_magma_var = tk.BooleanVar(value=False)
+        self.flip_magma_check = ttk.Checkbutton(
+            colormap_frame, text="magma", variable=self.flip_magma_var, state="disabled"
+        )
+        self.flip_magma_check.pack(side=tk.LEFT, padx=5)
+
+        # FLIP Default Colormap
+        row += 1
+        ttk.Label(parent_frame, text="Default Colormap:").grid(
+            row=row, column=0, sticky=tk.W, pady=5
+        )
+        self.flip_default_colormap_var = tk.StringVar(value="viridis")
+        self.flip_default_colormap_combo = ttk.Combobox(
+            parent_frame,
+            textvariable=self.flip_default_colormap_var,
+            values=["viridis", "jet", "turbo", "magma"],
+            width=15,
+            state="disabled",
+        )
+        self.flip_default_colormap_combo.grid(row=row, column=1, sticky=tk.W, padx=5)
+
+        # Separator for Parallel Processing
+        row += 1
+        ttk.Separator(parent_frame, orient="horizontal").grid(
+            row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=15
+        )
+
+        row += 1
+        ttk.Label(
+            parent_frame, text="Parallel Processing (Optional)", font=("Arial", 12, "bold")
+        ).grid(row=row, column=0, columnspan=3, sticky=tk.W)
+
+        # Enable Parallel
+        row += 1
+        self.enable_parallel_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            parent_frame,
+            text="Enable parallel processing for faster comparisons",
+            variable=self.enable_parallel_var,
+            command=self._toggle_parallel_fields,
+        ).grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=5)
+
+        # Max Workers
+        row += 1
+        ttk.Label(parent_frame, text="Max Worker Processes:").grid(
+            row=row, column=0, sticky=tk.W, pady=5
+        )
+        self.max_workers_var = tk.StringVar()
+        self.max_workers_entry = ttk.Entry(
+            parent_frame, textvariable=self.max_workers_var, width=10, state="disabled"
+        )
+        self.max_workers_entry.grid(row=row, column=1, sticky=tk.W, padx=5)
+
+        ttk.Label(
+            parent_frame,
+            text="(leave empty to use CPU count)",
+            foreground="gray",
+            font=("Arial", 8),
+        ).grid(row=row, column=2, sticky=tk.W)
+
         # Info text
         row += 1
         info_text = (
@@ -530,6 +656,16 @@ class ComparisonUI:
             parent_frame, text=info_text, foreground="gray", wraplength=400
         )
         info_label.grid(row=row, column=0, columnspan=3, pady=(20, 10), sticky=tk.W)
+
+    def _toggle_flip_fields(self):
+        """Enable/disable FLIP fields based on checkbox."""
+        state = "normal" if self.enable_flip_var.get() else "disabled"
+        self.flip_ppd_entry.config(state=state)
+        self.flip_viridis_check.config(state=state)
+        self.flip_jet_check.config(state=state)
+        self.flip_turbo_check.config(state=state)
+        self.flip_magma_check.config(state=state)
+        self.flip_default_colormap_combo.config(state="readonly" if self.enable_flip_var.get() else "disabled")
 
     def _toggle_parallel_fields(self):
         """Enable/disable parallel processing fields based on checkbox."""
@@ -656,6 +792,29 @@ class ComparisonUI:
             # Get commit hash (optional)
             commit_hash = self.commit_hash_var.get().strip() or None
 
+            # Parse FLIP settings
+            enable_flip = self.enable_flip_var.get()
+            flip_pixels_per_degree = (
+                float(self.flip_ppd_var.get()) if self.flip_ppd_var.get() else 67.0
+            )
+
+            # Build FLIP colormaps list from checkboxes
+            flip_colormaps = []
+            if self.flip_viridis_var.get():
+                flip_colormaps.append("viridis")
+            if self.flip_jet_var.get():
+                flip_colormaps.append("jet")
+            if self.flip_turbo_var.get():
+                flip_colormaps.append("turbo")
+            if self.flip_magma_var.get():
+                flip_colormaps.append("magma")
+
+            # Default to viridis if none selected
+            if not flip_colormaps:
+                flip_colormaps = ["viridis"]
+
+            flip_default_colormap = self.flip_default_colormap_var.get()
+
             self.config = Config(
                 base_dir=Path(self.base_dir_var.get()),
                 new_dir=self.new_dir_var.get(),
@@ -686,6 +845,11 @@ class ComparisonUI:
                 retention_max_age_days=retention_max_age,
                 retention_keep_annotated=retention_keep_annotated,
                 retention_keep_anomalies=retention_keep_anomalies,
+                # FLIP settings
+                enable_flip=enable_flip,
+                flip_pixels_per_degree=flip_pixels_per_degree,
+                flip_colormaps=flip_colormaps,
+                flip_default_colormap=flip_default_colormap,
             )
 
             # Validate config

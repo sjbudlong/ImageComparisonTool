@@ -71,6 +71,13 @@ class DependencyChecker:
             pip_install="matplotlib>=3.3.0",
         ),
         Dependency(
+            package_name="flip-evaluator",
+            import_name="flip_evaluator",
+            min_version="1.0.0",
+            description="NVIDIA FLIP perceptual image comparison",
+            pip_install="flip-evaluator>=1.0.0",
+        ),
+        Dependency(
             package_name="tkinter",
             import_name="tkinter",
             description="GUI interface (usually included with Python)",
@@ -78,6 +85,9 @@ class DependencyChecker:
             conda_install="tk",
         ),
     ]
+
+    # Optional dependencies (not required for core functionality)
+    OPTIONAL_DEPENDENCIES = []
 
     @staticmethod
     def check_package(dep: Dependency) -> Tuple[bool, Optional[str], Optional[str]]:

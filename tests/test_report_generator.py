@@ -753,3 +753,265 @@ class TestReportGenerator:
         assert "'Annotated'" in content
 
         logger.info("✓ Detail report image navigation test passed")
+
+
+@pytest.mark.unit
+class TestFLIPReportGeneration:
+    """Test FLIP-specific report generation features."""
+
+    def test_flip_metric_description_exists(self):
+        """ReportGenerator should have FLIP metric description."""
+        logger.debug("Testing FLIP metric description")
+
+        assert "FLIP Perceptual Metric" in ReportGenerator.METRIC_DESCRIPTIONS
+        description = ReportGenerator.METRIC_DESCRIPTIONS["FLIP Perceptual Metric"]
+        assert "NVIDIA FLIP" in description
+        assert "perceptual" in description.lower()
+
+        logger.info("✓ FLIP metric description test passed")
+
+    def test_generate_flip_section_with_metrics(self, valid_config, simple_test_image):
+        """_generate_flip_section should create FLIP visualization section."""
+        logger.debug("Testing FLIP section generation")
+
+        # Create config with FLIP enabled
+        valid_config.enable_flip = True
+        valid_config.flip_colormaps = ["viridis", "jet"]
+        valid_config.flip_default_colormap = "viridis"
+        valid_config.show_flip_visualization = True
+
+        # Create mock FLIP metrics
+        flip_map = np.random.uniform(0, 0.3, (100, 100)).astype(np.float32)
+
+        result = ComparisonResult(
+            filename="test.png",
+            new_image_path=valid_config.new_path / "test.png",
+            known_good_path=valid_config.known_good_path / "test.png",
+            diff_image_path=valid_config.diff_path / "diff_test.png",
+            annotated_image_path=valid_config.diff_path / "annotated_test.png",
+            metrics={
+                "FLIP Perceptual Metric": {
+                    "flip_mean": 0.15,
+                    "flip_max": 0.45,
+                    "flip_percentile_95": 0.30,
+                    "flip_quality_description": "Moderate differences",
+                    "flip_error_map_array": flip_map,
+                }
+            },
+            percent_different=5.0,
+            histogram_data="",
+        )
+
+        # Save test images
+        simple_test_image.save(result.new_image_path)
+        simple_test_image.save(result.known_good_path)
+
+        generator = ReportGenerator(valid_config)
+        flip_section = generator._generate_flip_section(result)
+
+        # Verify section contains expected elements
+        assert "FLIP Perceptual Metric" in flip_section
+        assert "flip-section" in flip_section
+        assert "0.15" in flip_section  # flip_mean
+        assert "0.45" in flip_section  # flip_max
+        assert "Moderate differences" in flip_section
+
+        logger.info("✓ FLIP section generation test passed")
+
+    def test_generate_flip_section_with_multiple_colormaps(
+        self, valid_config, simple_test_image
+    ):
+        """_generate_flip_section should create tabs for multiple colormaps."""
+        logger.debug("Testing FLIP section with multiple colormaps")
+
+        # Create config with multiple colormaps
+        valid_config.enable_flip = True
+        valid_config.flip_colormaps = ["viridis", "jet", "turbo"]
+        valid_config.flip_default_colormap = "jet"
+        valid_config.show_flip_visualization = True
+
+        flip_map = np.random.uniform(0, 0.2, (100, 100)).astype(np.float32)
+
+        result = ComparisonResult(
+            filename="test.png",
+            new_image_path=valid_config.new_path / "test.png",
+            known_good_path=valid_config.known_good_path / "test.png",
+            diff_image_path=valid_config.diff_path / "diff_test.png",
+            annotated_image_path=valid_config.diff_path / "annotated_test.png",
+            metrics={
+                "FLIP Perceptual Metric": {
+                    "flip_mean": 0.12,
+                    "flip_max": 0.35,
+                    "flip_percentile_95": 0.25,
+                    "flip_quality_description": "Slight differences",
+                    "flip_error_map_array": flip_map,
+                }
+            },
+            percent_different=3.0,
+            histogram_data="",
+        )
+
+        simple_test_image.save(result.new_image_path)
+        simple_test_image.save(result.known_good_path)
+
+        generator = ReportGenerator(valid_config)
+        flip_section = generator._generate_flip_section(result)
+
+        # Verify all colormaps are included
+        assert "Viridis" in flip_section
+        assert "Jet" in flip_section
+        assert "Turbo" in flip_section
+
+        # Verify tab structure
+        assert "tab-button" in flip_section
+        assert "tab-content" in flip_section
+        assert "showFlipTab" in flip_section  # JavaScript function
+
+        # Verify default colormap is active
+        assert 'class="tab-button active"' in flip_section or "active" in flip_section
+
+        logger.info("✓ FLIP section with multiple colormaps test passed")
+
+    def test_flip_section_not_generated_when_disabled(self, valid_config):
+        """_generate_flip_section should return empty when FLIP disabled."""
+        logger.debug("Testing FLIP section when disabled")
+
+        valid_config.show_flip_visualization = False
+
+        result = ComparisonResult(
+            filename="test.png",
+            new_image_path=Path("/test.png"),
+            known_good_path=Path("/known.png"),
+            diff_image_path=Path("/diff.png"),
+            annotated_image_path=Path("/annotated.png"),
+            metrics={"Pixel Difference": {"percent_different": 1.0}},
+            percent_different=1.0,
+            histogram_data="",
+        )
+
+        generator = ReportGenerator(valid_config)
+        flip_section = generator._generate_flip_section(result)
+
+        assert flip_section == ""
+
+        logger.info("✓ FLIP section disabled test passed")
+
+    def test_flip_section_not_generated_without_metrics(self, valid_config):
+        """_generate_flip_section should return empty when FLIP metrics absent."""
+        logger.debug("Testing FLIP section without metrics")
+
+        valid_config.show_flip_visualization = True
+
+        result = ComparisonResult(
+            filename="test.png",
+            new_image_path=Path("/test.png"),
+            known_good_path=Path("/known.png"),
+            diff_image_path=Path("/diff.png"),
+            annotated_image_path=Path("/annotated.png"),
+            metrics={"Pixel Difference": {"percent_different": 1.0}},
+            percent_different=1.0,
+            histogram_data="",
+        )
+
+        generator = ReportGenerator(valid_config)
+        flip_section = generator._generate_flip_section(result)
+
+        assert flip_section == ""
+
+        logger.info("✓ FLIP section without metrics test passed")
+
+    def test_visualization_toggle_histogram(self, valid_config, simple_test_image):
+        """Histogram section should respect show_histogram_visualization toggle."""
+        logger.debug("Testing histogram visualization toggle")
+
+        valid_config.show_histogram_visualization = False
+        valid_config.diff_path.mkdir(parents=True, exist_ok=True)
+        valid_config.html_path.mkdir(parents=True, exist_ok=True)
+
+        new_path = valid_config.new_path / "test.png"
+        known_path = valid_config.known_good_path / "test.png"
+        diff_path = valid_config.diff_path / "diff_test.png"
+        annotated_path = valid_config.diff_path / "annotated_test.png"
+
+        simple_test_image.save(new_path)
+        simple_test_image.save(known_path)
+        simple_test_image.save(diff_path)
+        simple_test_image.save(annotated_path)
+
+        result = ComparisonResult(
+            filename="test.png",
+            new_image_path=new_path,
+            known_good_path=known_path,
+            diff_image_path=diff_path,
+            annotated_image_path=annotated_path,
+            metrics={"Pixel Difference": {"percent_different": 1.0}},
+            percent_different=1.0,
+            histogram_data="base64_encoded_histogram",
+        )
+
+        generator = ReportGenerator(valid_config)
+        generator.generate_detail_report(result)
+
+        output_path = valid_config.html_path / "test.png.html"
+        content = output_path.read_text(encoding="utf-8")
+
+        # Histogram should NOT be in the content when disabled
+        assert "Histogram" not in content or "base64_encoded_histogram" not in content
+
+        logger.info("✓ Histogram visualization toggle test passed")
+
+    def test_detail_report_with_flip_section(self, valid_config, simple_test_image):
+        """Detail report should include FLIP section when enabled."""
+        logger.debug("Testing detail report with FLIP section")
+
+        valid_config.enable_flip = True
+        valid_config.flip_colormaps = ["viridis"]
+        valid_config.flip_default_colormap = "viridis"
+        valid_config.show_flip_visualization = True
+        valid_config.diff_path.mkdir(parents=True, exist_ok=True)
+        valid_config.html_path.mkdir(parents=True, exist_ok=True)
+
+        flip_map = np.random.uniform(0, 0.2, (100, 100)).astype(np.float32)
+
+        new_path = valid_config.new_path / "test.png"
+        known_path = valid_config.known_good_path / "test.png"
+        diff_path = valid_config.diff_path / "diff_test.png"
+        annotated_path = valid_config.diff_path / "annotated_test.png"
+
+        simple_test_image.save(new_path)
+        simple_test_image.save(known_path)
+        simple_test_image.save(diff_path)
+        simple_test_image.save(annotated_path)
+
+        result = ComparisonResult(
+            filename="test.png",
+            new_image_path=new_path,
+            known_good_path=known_path,
+            diff_image_path=diff_path,
+            annotated_image_path=annotated_path,
+            metrics={
+                "FLIP Perceptual Metric": {
+                    "flip_mean": 0.1,
+                    "flip_max": 0.3,
+                    "flip_percentile_95": 0.25,
+                    "flip_quality_description": "Slight differences",
+                    "flip_error_map_array": flip_map,
+                }
+            },
+            percent_different=2.0,
+            histogram_data="",
+        )
+
+        generator = ReportGenerator(valid_config)
+        generator.generate_detail_report(result)
+
+        output_path = valid_config.html_path / "test.png.html"
+        content = output_path.read_text(encoding="utf-8")
+
+        # Verify FLIP section is present
+        assert "FLIP Perceptual Metric" in content
+        assert "flip-section" in content
+        assert "0.1" in content  # flip_mean
+        assert "Slight differences" in content
+
+        logger.info("✓ Detail report with FLIP section test passed")

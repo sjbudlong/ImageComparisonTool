@@ -3,6 +3,7 @@ Image processing utilities for diff generation and visualization.
 """
 
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import io
 import base64
 import logging
@@ -10,7 +11,7 @@ import numpy as np
 from PIL import Image
 import cv2
 from pathlib import Path
-from typing import Tuple, Optional, TYPE_CHECKING
+from typing import Tuple, Optional, Dict, List, TYPE_CHECKING
 import matplotlib
 
 matplotlib.use("Agg")  # Use non-interactive backend
@@ -454,3 +455,199 @@ class ImageProcessor:
         combined = np.hstack([img1, img2, diff])
 
         return combined
+
+    @staticmethod
+    def create_flip_heatmap(
+        flip_map: np.ndarray,
+        colormap: str = "viridis",
+        normalize: bool = True
+    ) -> np.ndarray:
+        """
+        Create heatmap visualization from FLIP error map.
+
+        Converts FLIP error map (grayscale) to color heatmap using matplotlib colormaps.
+        Useful for visualizing perceptual differences with intuitive color gradients.
+
+        Args:
+            flip_map: FLIP error map (H x W) with values in [0, 1]
+                where 0 = identical, 1 = maximum perceptual difference
+            colormap: Matplotlib colormap name. Options:
+                - "viridis": Perceptually uniform, good for general use
+                - "jet": High contrast, rainbow colors
+                - "turbo": Smooth rainbow, improved version of jet
+                - "magma": Dark to bright, good for dark backgrounds
+            normalize: Whether to normalize map to full colormap range.
+                If True, maps min->max to colormap's full range.
+                If False, uses absolute [0, 1] scale.
+
+        Returns:
+            RGB heatmap image as uint8 numpy array (H x W x 3)
+
+        Example:
+            >>> flip_map = np.random.uniform(0, 0.3, (100, 100))
+            >>> heatmap = ImageProcessor.create_flip_heatmap(flip_map, "viridis")
+            >>> assert heatmap.shape == (100, 100, 3)
+        """
+        logger.debug(f"Creating FLIP heatmap with colormap={colormap}, normalize={normalize}")
+
+        # Get the colormap
+        try:
+            cmap = cm.get_cmap(colormap)
+        except ValueError:
+            logger.warning(f"Invalid colormap '{colormap}', falling back to 'viridis'")
+            cmap = cm.get_cmap("viridis")
+
+        # Normalize if requested
+        if normalize and flip_map.max() > flip_map.min():
+            flip_normalized = (flip_map - flip_map.min()) / (flip_map.max() - flip_map.min())
+            logger.debug(f"Normalized FLIP map: range [{flip_map.min():.6f}, {flip_map.max():.6f}] -> [0, 1]")
+        else:
+            flip_normalized = flip_map
+
+        # Apply colormap (returns RGBA with values in [0, 1])
+        heatmap_rgba = cmap(flip_normalized)
+
+        # Convert to RGB uint8 (drop alpha channel)
+        heatmap_rgb = (heatmap_rgba[:, :, :3] * 255).astype(np.uint8)
+
+        logger.debug(f"FLIP heatmap created: shape={heatmap_rgb.shape}, dtype={heatmap_rgb.dtype}")
+        return heatmap_rgb
+
+    @staticmethod
+    def create_flip_heatmaps_multi_colormap(
+        flip_map: np.ndarray,
+        colormaps: List[str],
+        output_dir: Path,
+        base_filename: str
+    ) -> Dict[str, Path]:
+        """
+        Generate multiple heatmap versions with different colormaps.
+
+        Creates and saves FLIP heatmaps using multiple color schemes, allowing
+        users to choose their preferred visualization style.
+
+        Args:
+            flip_map: FLIP error map (H x W) with values in [0, 1]
+            colormaps: List of colormap names (e.g., ["viridis", "jet", "turbo"])
+            output_dir: Directory to save heatmap images
+            base_filename: Base filename (e.g., "image.png" -> "flip_viridis_image.png")
+
+        Returns:
+            Dictionary mapping colormap name to saved file path
+
+        Example:
+            >>> flip_map = np.random.uniform(0, 0.3, (100, 100))
+            >>> paths = ImageProcessor.create_flip_heatmaps_multi_colormap(
+            ...     flip_map, ["viridis", "jet"], Path("./output"), "test.png"
+            ... )
+            >>> assert "viridis" in paths
+            >>> assert paths["viridis"].exists()
+        """
+        logger.debug(f"Generating {len(colormaps)} FLIP heatmap versions for {base_filename}")
+
+        # Ensure output directory exists
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        heatmap_paths = {}
+
+        for colormap in colormaps:
+            # Generate heatmap
+            heatmap = ImageProcessor.create_flip_heatmap(flip_map, colormap, normalize=True)
+
+            # Create filename
+            output_path = output_dir / f"flip_{colormap}_{base_filename}"
+
+            # Save heatmap
+            Image.fromarray(heatmap).save(output_path)
+            heatmap_paths[colormap] = output_path
+
+            logger.debug(f"Saved FLIP heatmap: {colormap} -> {output_path}")
+
+        logger.info(f"Generated {len(heatmap_paths)} FLIP heatmap(s) for {base_filename}")
+        return heatmap_paths
+
+    @staticmethod
+    def generate_flip_comparison_image(
+        img1: np.ndarray,
+        img2: np.ndarray,
+        flip_map: np.ndarray,
+        colormap: str = "viridis"
+    ) -> str:
+        """
+        Generate side-by-side comparison with FLIP heatmap for HTML embedding.
+
+        Creates a 4-panel visualization:
+        1. Known Good image
+        2. New Image
+        3. FLIP Error Map (heatmap)
+        4. FLIP Overlay (error map overlaid on known good)
+
+        Args:
+            img1: Known good image as numpy array (uint8, RGB)
+            img2: New image as numpy array (uint8, RGB)
+            flip_map: FLIP error map (H x W) with values in [0, 1]
+            colormap: Matplotlib colormap for error visualization
+
+        Returns:
+            Base64 encoded PNG image string for HTML <img> tag embedding
+
+        Example:
+            >>> img1 = np.ones((100, 100, 3), dtype=np.uint8) * 128
+            >>> img2 = np.ones((100, 100, 3), dtype=np.uint8) * 130
+            >>> flip_map = np.random.uniform(0, 0.1, (100, 100))
+            >>> b64_img = ImageProcessor.generate_flip_comparison_image(
+            ...     img1, img2, flip_map, "viridis"
+            ... )
+            >>> assert b64_img.startswith("iVBOR")  # PNG signature in base64
+        """
+        logger.debug(f"Generating FLIP comparison image with colormap={colormap}")
+
+        # Create figure with 4 subplots
+        fig, axes = plt.subplots(1, 4, figsize=(20, 5))
+
+        # Panel 1: Known Good
+        axes[0].imshow(img1)
+        axes[0].set_title("Known Good", fontweight="bold", fontsize=12)
+        axes[0].axis("off")
+
+        # Panel 2: New Image
+        axes[1].imshow(img2)
+        axes[1].set_title("New Image", fontweight="bold", fontsize=12)
+        axes[1].axis("off")
+
+        # Panel 3: FLIP Error Map
+        flip_display = axes[2].imshow(flip_map, cmap=colormap, vmin=0, vmax=1)
+        axes[2].set_title(f"FLIP Error Map ({colormap})", fontweight="bold", fontsize=12)
+        axes[2].axis("off")
+
+        # Panel 4: FLIP Overlay
+        axes[3].imshow(img1)
+        axes[3].imshow(flip_map, cmap=colormap, alpha=0.6, vmin=0, vmax=1)
+        axes[3].set_title("FLIP Overlay", fontweight="bold", fontsize=12)
+        axes[3].axis("off")
+
+        # Add colorbar
+        cbar = plt.colorbar(
+            flip_display,
+            ax=axes,
+            orientation='horizontal',
+            fraction=0.05,
+            pad=0.05,
+            shrink=0.8
+        )
+        cbar.set_label(
+            "FLIP Error (0 = identical, 1 = max perceptual difference)",
+            fontsize=10
+        )
+
+        plt.tight_layout()
+
+        # Convert to base64
+        buf = io.BytesIO()
+        plt.savefig(buf, format="png", dpi=100, bbox_inches="tight")
+        buf.seek(0)
+        img_base64 = base64.b64encode(buf.read()).decode("utf-8")
+        plt.close(fig)
+
+        logger.debug("FLIP comparison image generated successfully")
+        return img_base64

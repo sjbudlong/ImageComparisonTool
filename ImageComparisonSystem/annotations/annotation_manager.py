@@ -12,14 +12,11 @@ from typing import Optional, List, Dict, Any
 
 logger = logging.getLogger(__name__)
 
-# Try to import Database
+# Import Database with proper path handling
 try:
     from ..history.database import Database
-except ImportError:
-    try:
-        from history.database import Database  # type: ignore
-    except ImportError:
-        from ImageComparisonSystem.history.database import Database  # type: ignore
+except (ImportError, ValueError):
+    from ImageComparisonSystem.history.database import Database
 
 
 class AnnotationManager:
