@@ -177,8 +177,32 @@ class ImageComparator:
         # Sort by percent difference (descending)
         results.sort(key=lambda x: x.percent_different, reverse=True)
 
+        # Save to history database and enrich with historical analysis
+        if self.history_manager:
+            try:
+                logger.info("Saving results to history database...")
+                run_id = self.history_manager.save_run(results, self.config)
+                logger.info(f"Results saved (run_id: {run_id})")
+
+                logger.info("Enriching results with historical analysis...")
+                results = self.history_manager.enrich_with_history(results)
+
+                # Log anomaly detection results
+                anomalies = [r for r in results if hasattr(r, 'is_anomaly') and r.is_anomaly]
+                if anomalies:
+                    logger.info(f"Detected {len(anomalies)} statistical anomalies:")
+                    for result in anomalies[:5]:  # Show first 5
+                        logger.info(
+                            f"  - {result.filename}: "
+                            f"{result.std_dev_from_mean:.2f}σ from mean "
+                            f"(score: {result.composite_score:.1f})"
+                        )
+            except Exception as e:
+                logger.error(f"History tracking failed: {e}")
+                # Continue without history - don't fail the entire comparison
+
         # Generate summary report with full results list for navigation
-        logger.info("Generating summary report...")
+        logger.info("Generating reports...")
         self._generate_reports(results)
 
         return results
