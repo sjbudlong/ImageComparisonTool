@@ -2,11 +2,43 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Offline Ready](https://img.shields.io/badge/offline-ready-green.svg)](QUICKSTART.md#for-offline-environments)
+[![Offline Ready](https://img.shields.io/badge/offline-ready-green.svg)](SETUP_GUIDE.md#for-offline-environments)
 
-A modular Python system for comparing images and generating detailed HTML reports with visual diffs. Perfect for 3D rendering validation, visual regression testing, and quality assurance workflows.
+A comprehensive Python system for comparing images with **historical metrics tracking**, **NVIDIA FLIP perceptual analysis**, **ML annotation support**, and **advanced visual regression testing**. Perfect for 3D rendering validation, VFX quality assurance, automated testing pipelines, and enterprise QA workflows.
 
-## 🚀 Recent Enhancements (November 2025)
+## 🎉 Major Updates
+
+### NVIDIA FLIP Perceptual Metric (Latest)
+
+**Optional perceptual image comparison** that models human visual perception:
+
+- 👁️ **Human Visual System (HVS) Modeling** - Detects differences as humans actually see them
+- 🎨 **Perceptual Quality Scoring** - Superior to SSIM for rendering, VFX, and gaming QA
+- 🔥 **Interactive Heatmap Visualizations** - Multiple colormaps (viridis, jet, turbo, magma)
+- ⚙️ **Configurable Viewing Distance** - Adjust pixels-per-degree for your use case
+- 📊 **Integrated with Historical Tracking** - FLIP metrics included in composite scoring
+- 🚀 **Opt-in Design** - Disabled by default for performance, enable when needed
+
+**Installation:** `pip install flip-image-comparison` (optional)
+**Usage:** Add `--enable-flip` flag or check GUI option
+**Documentation:** See [FLIP_INTEGRATION_GUIDE.md](FLIP_INTEGRATION_GUIDE.md)
+
+### Historical Metrics Tracking (December 2025)
+
+**All 12 phases complete!** Enterprise-grade historical tracking capabilities:
+
+- 📊 **Historical Metrics Database** - SQLite-based tracking of all comparison runs over time
+- 📈 **Composite Scoring** - Weighted combination of multiple metrics with configurable weights
+- 🚨 **Statistical Anomaly Detection** - Automatic flagging of results >2σ from historical mean
+- 📉 **Trend Visualization** - Interactive charts showing metric evolution over time
+- 🏷️ **ML Annotation System** - Full CRUD for training data annotations (bounding box, polygon, point, classification)
+- 🤖 **ML Export Formats** - Export annotations in COCO and YOLO formats for model training
+- 🗄️ **Smart Data Retention** - Configurable cleanup policies that preserve important data
+- 🔍 **Database Analytics** - Query historical trends, compare runs, analyze anomalies
+
+See [HISTORICAL_TRACKING_COMPLETE.md](HISTORICAL_TRACKING_COMPLETE.md) for complete documentation.
+
+### Recent Enhancements
 
 See [RECENT_CHANGES.md](RECENT_CHANGES.md) for detailed information about:
 - ✨ **Recursive image discovery** - Compare images organized in nested subdirectories
@@ -18,50 +50,74 @@ See [RECENT_CHANGES.md](RECENT_CHANGES.md) for detailed information about:
 
 ## 🎯 Key Features
 
+### Core Comparison Engine
 - **Automated Image Comparison**: Compare two sets of images and identify differences
   - **Recursive directory search**: Automatically finds images in nested subfolders
   - **Smart image matching**: Preserves directory structure with fallback filename matching
-- **3D Space Optimization**: Advanced histogram equalization to normalize tonal variations while highlighting structural differences
+  - **Parallel processing**: Multi-core support for processing thousands of images
+- **3D Space Optimization**: Advanced histogram equalization to normalize tonal variations
   - CLAHE (Contrast Limited Adaptive Histogram Equalization)
   - LAB color space processing
   - Optional grayscale mode for maximum tonal normalization
+
+### Metrics & Analysis
 - **Multiple Analysis Metrics**:
+  - **NVIDIA FLIP** - Perceptual metric modeling human vision (optional)
   - Pixel-level differences (percentage and count)
   - Structural Similarity Index (SSIM)
   - Color channel differences with thresholds
   - Dimension analysis
   - Histogram correlation and comparison
+- **Composite Metrics**: Weighted combination of all metrics into single score
+  - 4-way split without FLIP (25% each: pixel, SSIM, color, histogram)
+  - 5-way split with FLIP (20% each: FLIP, pixel, SSIM, color, histogram)
+- **Historical Statistics**: Mean, standard deviation, deviation from baseline
+- **Anomaly Detection**: Statistical flagging of outliers (>2σ threshold)
+
+### Visual Output & Reporting
 - **Visual Diff Generation**:
   - Adjustable contrast enhancement for difference images
   - Annotated images with bounding boxes showing difference areas
+  - **FLIP heatmaps** with multiple colormaps for perceptual difference visualization
   - Configurable minimum contour area for noise reduction
 - **Interactive HTML Reports**:
-  - Click images to view full-size overlays with close button
+  - Click images to view full-size overlays
+  - **FLIP perceptual analysis section** with tabbed colormap switching
   - Embedded grayscale and RGB channel histograms
-  - Summary page sorted by difference percentage
+  - **Historical trend charts** showing composite scores over time
+  - **Anomaly badges** highlighting statistical outliers
+  - Summary pages with composite score sorting
   - Detailed metrics with interactive descriptions
-  - Click ? icon next to metric headers to learn more
 - **CI/CD Pipeline Integration**:
   - Markdown summary reports (`summary.md`) for build pipelines
-  - Machine-readable format for Azure DevOps, GitHub Actions, Jenkins, etc.
+  - Machine-readable JSON format
   - Comprehensive statistics and status categorization
-  - ISO-format timestamps for audit trails
-- **Flexible Configuration**:
-  - GUI for easy setup with live color preview
-  - Command-line interface for automation
-  - Adjustable tolerances for all metrics
-  - Customizable highlight colors and thresholds
+
+### Historical Tracking & ML Features
+- **Database Persistence**: SQLite database tracking all runs (one DB per project)
+- **Build Identification**: Track runs by build number or identifier
+- **Trend Analysis**: Compare current results against historical baselines
+- **Annotation System**: Add bounding boxes, polygons, points, or classifications to results
+- **ML Training Export**: Export annotations in COCO or YOLO format
+- **Data Retention**: Configurable policies with smart protection for annotated/anomalous data
+- **Query & Analytics**: Search annotations by label/category, generate statistics
+
+### Flexible Configuration
+- **GUI Mode**: Easy setup with live color preview, histogram controls, and FLIP configuration
+- **Command-line Interface**: Full automation support with 40+ arguments
+- **Configurable Weights**: Adjust composite metric formula per project
+- **Adjustable Tolerances**: Fine-tune all thresholds for your use case
 
 ## 📦 Installation
 
-See [QUICKSTART.md](QUICKSTART.md) for quick setup, or read on for detailed instructions.
+See [SETUP_GUIDE.md](SETUP_GUIDE.md) for comprehensive setup instructions, or use the quick start below.
 
 ### Prerequisites
 
 - Python 3.8 or higher
 - pip package manager
 
-### Quick Install (with internet)
+### Quick Install
 
 1. Install dependencies:
 ```bash
@@ -70,437 +126,563 @@ pip install -r requirements.txt
 
 2. Verify installation:
 ```bash
-python dependencies.py
-# or run full verification
-python verify_installation.py
+python -c "import numpy, cv2, PIL, skimage, matplotlib, flip; print('All dependencies installed!')"
 ```
 
-### Offline Installation
-
-For systems without internet access, use the offline setup scripts:
-
-#### Step 1: Prepare packages (on a machine WITH internet)
-
-**Linux/Mac:**
+3. Run your first comparison:
 ```bash
-chmod +x offline_setup.sh
-./offline_setup.sh
+cd ImageComparisonSystem
+python main.py --base-dir path/to/your/images --build-number "baseline"
 ```
 
-**Windows:**
-```batch
-offline_setup.bat
-```
+### Required Dependencies
 
-This creates an `offline_packages/` directory containing all required Python packages.
+- **Pillow** (>=8.0.0) - Image processing
+- **numpy** (>=1.19.0) - Numerical computing
+- **opencv-python** (>=4.5.0) - Computer vision
+- **scikit-image** (>=0.19.0) - SSIM calculation
+- **matplotlib** (>=3.3.0) - Histogram and trend visualization
+- **flip-evaluator** (>=1.0.0) - NVIDIA FLIP perceptual metric
 
-#### Step 2: Transfer to offline machine
+See [requirements.txt](requirements.txt) for complete list.
 
-Copy the entire `offline_packages/` directory to your offline machine.
+## 📖 Usage
 
-#### Step 3: Install on offline machine
-
-**Linux/Mac:**
-```bash
-cd offline_packages
-chmod +x install_offline.sh
-./install_offline.sh
-```
-
-**Windows:**
-```batch
-cd offline_packages
-install_offline.bat
-```
-
-#### Step 4: Verify installation
+### Basic Comparison (No History)
 
 ```bash
-cd ..
-python dependencies.py
-python verify_installation.py
+cd ImageComparisonSystem
+python main.py --base-dir /path/to/images
 ```
 
-### Checking Dependencies
-
-The system includes comprehensive dependency checking:
+### Comparison with Historical Tracking (Recommended)
 
 ```bash
-# Check all dependencies
-python dependencies.py
-
-# Check dependencies and save exact versions
-python dependencies.py --save-freeze
-
-# Run with dependency check
-python main.py
-
-# Skip dependency check (faster startup)
-python main.py --skip-dependency-check
-
-# Force dependency check and exit
-python main.py --check-dependencies
+cd ImageComparisonSystem
+python main.py --base-dir /path/to/images --build-number "build-2025-12-03-001"
 ```
 
-### Troubleshooting Installation
+This will:
+- Compare all images in `new/` against `known_good/`
+- Store results in SQLite database (`.imgcomp_history/comparison_history.db`)
+- Calculate composite scores and detect anomalies
+- Generate HTML reports with historical trend charts
+- Preserve data for future comparisons
 
-**Missing tkinter (Linux):**
+### Using NVIDIA FLIP Perceptual Analysis
+
 ```bash
-# Ubuntu/Debian
-sudo apt-get install python3-tk
+# Enable FLIP with default settings
+python main.py --base-dir /path/to/images --enable-flip
 
-# Fedora/RHEL
-sudo dnf install python3-tkinter
+# Enable FLIP with custom viewing distance and colormaps
+python main.py --base-dir /path/to/images --enable-flip \
+  --flip-pixels-per-degree 42.0 \
+  --flip-colormaps viridis jet turbo
 ```
 
-**OpenCV issues:**
-If you encounter OpenCV import errors, try:
+See [FLIP_INTEGRATION_GUIDE.md](FLIP_INTEGRATION_GUIDE.md) for comprehensive FLIP documentation.
+
+### Historical Tracking Features
+
+#### View Database Statistics
 ```bash
-pip uninstall opencv-python
-pip install opencv-python-headless>=4.8.0
+python main.py --base-dir /path/to/images --history-stats
 ```
 
-**Matplotlib backend issues:**
-The system uses the 'Agg' backend (non-interactive) by default, which works in headless environments.
-
-**Platform-specific wheel issues:**
-If offline installation fails due to platform mismatches, re-download for your specific platform:
+#### Cleanup Old Runs
 ```bash
-pip download <package> --platform manylinux2014_x86_64  # Linux
-pip download <package> --platform win_amd64            # Windows
-pip download <package> --platform macosx_10_9_x86_64   # macOS
+# Preview what would be deleted
+python main.py --base-dir /path/to/images --cleanup-history --max-age-days 90 --dry-run
+
+# Actually delete old runs (preserves annotated and anomalous data)
+python main.py --base-dir /path/to/images --cleanup-history --max-age-days 90
 ```
 
-## Usage
+#### Export Annotations for ML Training
+```bash
+# Export in COCO format (default)
+python main.py --base-dir /path/to/images --export-annotations
+
+# Export in YOLO format
+python main.py --base-dir /path/to/images --export-annotations --export-format yolo
+
+# Export specific run
+python main.py --base-dir /path/to/images --export-annotations --export-run-id 5
+```
 
 ### GUI Mode (Interactive)
 
-Simply run without arguments or use the `--gui` flag:
-
 ```bash
-python main.py              # Default: launches GUI if no CLI args provided
-python main.py --gui        # Explicitly request GUI mode
+python main.py --gui
 ```
 
-The GUI lets you:
-- Select base directory
-- Configure input/output folders
-- Set difference thresholds
-- Preview color selections
-- Start comparison
+The GUI provides:
+- Visual configuration of all settings
+- Color picker with live preview
+- Histogram visualization controls
+- **NVIDIA FLIP configuration section** (pixels per degree, colormaps)
+- One-click comparison start
 
-### Command-Line Mode
+### Command-Line Options
 
-The CLI supports flexible argument combinations - you only need to provide what you want to customize:
+#### Core Arguments
+- `--base-dir` - Base directory (required)
+- `--new-dir` - New images subdirectory (default: "new")
+- `--known-good-dir` - Baseline images subdirectory (default: "known_good")
+- `--output-dir` - Output directory (default: "comparison_results")
 
-#### Minimal (uses smart defaults)
-```bash
-# Just specify base dir - uses 'new' and 'known_good' subdirs by default
-python main.py --base-dir /path/to/project
-```
+#### FLIP Arguments (Optional)
+- `--enable-flip` - Enable NVIDIA FLIP perceptual analysis
+- `--flip-pixels-per-degree` - Viewing distance parameter (default: 67.0)
+- `--flip-colormaps` - Heatmap colormaps (default: viridis; options: viridis, jet, turbo, magma)
+- `--flip-default-colormap` - Primary colormap for reports (default: viridis)
 
-#### Basic
-```bash
-python main.py \
-  --base-dir /path/to/project \
-  --new-dir new_images \
-  --known-good-dir baseline_images
-```
+#### Historical Tracking Arguments
+- `--build-number` - Build identifier for this run
+- `--enable-history` / `--no-history` - Enable/disable historical tracking (default: enabled)
+- `--history-db` - Custom database path
 
-#### Full Options
-```bash
-python main.py \
-  --base-dir /path/to/project \
-  --new-dir new_images \
-  --known-good-dir baseline_images \
-  --diff-dir diffs \
-  --html-dir reports \
-  --pixel-diff-threshold 0.01 \
-  --pixel-change-threshold 1 \
-  --ssim-threshold 0.95 \
-  --color-distance-threshold 10.0 \
-  --min-contour-area 50 \
-  --use-histogram-eq \
-  --highlight-color "255,0,0" \
-  --diff-enhancement 5.0 \
-  --open-report
-```
+#### Retention/Cleanup Arguments
+- `--cleanup-history` - Run retention policy cleanup
+- `--max-runs` - Maximum number of runs to keep
+- `--max-age-days` - Maximum age in days for runs
+- `--dry-run` - Preview deletions without executing
+- `--history-stats` - Display database statistics
 
-### CLI Arguments Reference
+#### Annotation Export Arguments
+- `--export-annotations` - Export annotations for ML training
+- `--export-run-id` - Specify run ID (default: most recent)
+- `--export-format` - Choose 'coco' or 'yolo' (default: coco)
+- `--export-output` - Custom output path
 
-**Core Arguments:**
-- `--base-dir`: Base directory for all operations (required for CLI mode)
-- `--new-dir`: Subdirectory with new images (default: "new")
-- `--known-good-dir`: Subdirectory with baseline images (default: "known_good")
-- `--diff-dir`: Output subdirectory for diff images (default: "diffs")
-- `--html-dir`: Output subdirectory for HTML reports (default: "reports")
+#### Tolerance Arguments
+- `--pixel-diff-threshold` - Pixel difference percentage (default: 0.01)
+- `--ssim-threshold` - SSIM threshold 0-1 (default: 0.95)
+- `--color-distance-threshold` - RGB distance threshold (default: 10.0)
+- `--min-contour-area` - Minimum bounding box area (default: 50)
 
-**Tolerance Arguments:**
-- `--pixel-diff-threshold`: Percentage threshold for flagging differences (default: 0.01)
-- `--pixel-change-threshold`: Minimum pixel value change to count (default: 1)
-- `--ssim-threshold`: SSIM similarity threshold 0-1 (default: 0.95)
-- `--color-distance-threshold`: RGB color distance threshold (default: 10.0)
-- `--min-contour-area`: Minimum area for bounding boxes in pixels (default: 50)
+#### Performance Arguments
+- `--parallel` - Enable parallel processing
+- `--max-workers` - Maximum parallel workers (default: CPU count)
 
-**Visual Arguments:**
-- `--use-histogram-eq` / `--no-histogram-eq`: Enable/disable histogram equalization
-- `--highlight-color`: RGB color for boxes, e.g., "255,0,0" for red (default: red)
-- `--diff-enhancement`: Contrast enhancement factor, 1.0-10.0 (default: 5.0)
+#### Visual Arguments
+- `--use-histogram-eq` / `--no-histogram-eq` - Histogram equalization
+- `--highlight-color` - RGB color for boxes (default: "255,0,0")
+- `--diff-enhancement` - Contrast enhancement factor (default: 5.0)
 
-**Control Arguments:**
-- `--open-report`: Auto-open summary report in browser after completion
-- `--gui`: Force GUI mode even with other CLI args
-- `--skip-dependency-check`: Skip dependency verification (faster)
-- `--check-dependencies`: Check dependencies only and exit
+#### Control Arguments
+- `--open-report` - Auto-open summary report in browser
+- `--log-level` - Logging level (debug, info, warning, error, critical)
+- `--log-file` - Path to log file
 
-**Performance Arguments:**
-- `--parallel`: Enable parallel processing for faster comparisons (recommended for 100+ images)
-- `--max-workers`: Number of parallel workers (default: CPU count, e.g., 8 for 8-core CPU)
+Run `python main.py --help` for complete argument list.
 
-### Performance Optimization
+## 🏗️ Architecture
 
-For large-scale image comparisons (100+ images), the tool includes performance optimizations:
-
-#### Parallel Processing
-
-Enable parallel processing to dramatically reduce comparison time on multi-core systems:
-
-```bash
-# Enable parallel processing with automatic worker count
-python main.py --base-dir /path/to/project --parallel
-
-# Specify worker count (useful for shared systems)
-python main.py --base-dir /path/to/project --parallel --max-workers 4
-```
-
-**Performance Benchmarks** (2000 images on 8-core system):
-- **Sequential**: ~2.7 hours
-- **Parallel (4 workers)**: ~40 minutes (4x faster)
-- **Parallel (8 workers)**: ~20 minutes (8x faster)
-
-**Memory Efficiency:**
-- Streaming architecture maintains constant memory usage
-- No accumulation of results in memory during processing
-- Suitable for processing thousands of images without memory issues
-
-**When to use parallel processing:**
-- ✅ Processing 100+ image pairs
-- ✅ Multi-core system available (4+ cores recommended)
-- ✅ I/O subsystem can handle concurrent reads (SSD recommended)
-- ❌ Processing < 50 images (overhead may not be worth it)
-- ❌ Single-core or low-memory systems
-
-#### Implementation Details
-
-The performance optimizations include:
-1. **Parallel Processing**: Uses `ProcessPoolExecutor` to distribute work across CPU cores
-2. **Streaming Pattern**: Generator-based processing to maintain constant memory usage
-3. **Optimized I/O**: Eliminates duplicate image loading (loads once, returns both original and equalized)
-
-## Directory Structure
+### Module Structure
 
 ```
-base-dir/
-├── new_images/           # New images to compare
-│   ├── image1.png
-│   └── image2.png
-├── known_good/           # Baseline reference images
-│   ├── image1.png
-│   └── image2.png
-├── diffs/               # Generated diff images
-│   ├── diff_image1.png
-│   └── annotated_image1.png
-└── reports/             # HTML reports
-    ├── summary.html
-    ├── image1.png.html
-    └── results.json
+ImageComparisonSystem/
+├── main.py                          # Entry point & CLI argument parsing
+├── config.py                        # Configuration management (FLIP settings included)
+├── models.py                        # Data models (ComparisonResult with history fields)
+├── comparator.py                    # Main comparison orchestration (FLIP integration)
+├── processor.py                     # Image loading, diff generation, FLIP heatmaps
+├── analyzers.py                     # Modular analysis components (FLIP analyzer)
+├── report_generator.py              # HTML report creation (FLIP sections, trend charts)
+├── ui.py                            # GUI interface (FLIP controls)
+│
+├── history/                         # Historical Tracking System
+│   ├── __init__.py
+│   ├── database.py                  # SQLite schema & connection management
+│   ├── history_manager.py           # CRUD operations for runs/results
+│   ├── composite_metric.py          # Weighted metric calculator (FLIP support)
+│   ├── statistics.py                # Statistical analysis & anomaly detection
+│   ├── retention.py                 # Data cleanup policies
+│   └── migrations/
+│       └── v1_initial_schema.sql    # Database schema definition
+│
+├── annotations/                     # ML Annotation System
+│   ├── __init__.py
+│   ├── annotation_manager.py        # CRUD for annotations
+│   └── export_formats.py            # COCO/YOLO exporters
+│
+└── visualization/                   # Data Visualization
+    ├── __init__.py
+    └── trend_charts.py              # Matplotlib-based trend charts
 ```
 
-## Output
+### Database Schema
 
-After running a comparison, you'll get:
+#### Core Tables
+- **runs** - Comparison run metadata (build_number, timestamp, config, totals)
+- **results** - Per-image comparison results with all metrics (FLIP metrics included)
+- **annotations** - ML training annotations (geometry, labels, categories)
+- **composite_metric_config** - Metric weight configuration (FLIP weights)
+- **retention_policy** - Data cleanup settings
 
-1. **summary.html**: Overview of all comparisons, sorted by difference percentage
-2. **Individual Reports**: One HTML page per image pair with:
-   - Side-by-side image comparison
-   - Enhanced difference visualization
-   - Annotated differences with colored bounding boxes
-   - Interactive histogram comparisons (RGB channels)
-   - Detailed metrics and statistics
-   - Clickable full-size image overlay with close button
-3. **results.json**: Machine-readable results data
+#### Key Relationships
+- runs 1:N results (CASCADE DELETE)
+- results 1:N annotations (CASCADE DELETE)
+- Separate database per project (located at `<base-dir>/.imgcomp_history/comparison_history.db`)
 
-## Using Histogram Equalization for 3D Spaces
+### Data Flow
 
-When comparing rendered 3D spaces, lighting and tonal variations can cause false positives. Histogram equalization normalizes these tonal differences while preserving structural changes:
+```
+1. Image Comparison
+   ├─> Load & analyze images (processor.py, analyzers.py)
+   ├─> Calculate FLIP error map (optional, analyzers.py)
+   ├─> Generate FLIP heatmaps (processor.py)
+   ├─> Calculate composite score (composite_metric.py with FLIP)
+   ├─> Query historical data (history_manager.py)
+   ├─> Detect anomalies (statistics.py)
+   └─> Save to database (database.py)
 
-**When to use:**
-- Comparing 3D renders with different lighting
-- Scenes with varying ambient conditions
-- Testing geometry changes while ignoring illumination shifts
+2. Report Generation
+   ├─> Generate FLIP heatmap tabs (report_generator.py)
+   ├─> Generate trend charts (trend_charts.py)
+   ├─> Create HTML reports (report_generator.py)
+   └─> Export for CI/CD (Markdown, JSON)
 
-**How it works:**
-- Redistributes pixel intensities to normalize tonal range
-- Preserves structural and geometric differences
-- Reduces false positives from lighting variations
+3. Annotation Workflow
+   ├─> Add annotations via API (annotation_manager.py)
+   ├─> Query by label/category
+   ├─> Export to COCO/YOLO (export_formats.py)
+   └─> Use for ML training
 
-**Configuration:**
-- Enable in GUI: Check "Use Histogram Equalization"
-- Enable in CLI: Add `--use-histogram-eq` flag
-- Disable in CLI: Add `--no-histogram-eq` flag (default: enabled)
+4. Data Management
+   ├─> Apply retention policies (retention.py)
+   ├─> Protect annotated/anomalous runs
+   └─> Maintain optimal database size
+```
 
-### Configurable Histogram Visualization
+## 📊 Metrics Explained
 
-The histogram display in report pages is fully configurable, allowing you to adjust appearance and data representation without code changes.
+### Core Metrics (Individual)
+- **NVIDIA FLIP** - Perceptual error (0-1 scale, 0=imperceptible, 1=significant)
+- **Pixel Difference** - Percentage of changed pixels
+- **SSIM (Structural Similarity)** - 0-1 score measuring structural likeness
+- **Color Distance** - Euclidean distance in RGB space
+- **Histogram Correlation** - Distribution similarity (0-1)
 
-**Available Settings:**
-- **Bins**: 64 (smooth) to 512 (detailed, default 256)
-- **Figure Size**: Width and height in inches
-- **Transparency**: Grayscale and RGB line alpha (0-1 scale)
-- **Line Width**: Thickness of histogram lines
-- **Color Control**: Customize colors for grayscale and RGB channels
-- **Display Toggles**: Show/hide grayscale and RGB histograms independently
+### Composite Metric (Historical)
+Weighted combination of all metrics, normalized to 0-100 scale:
 
-**Configuration Methods:**
-
-*Via GUI (Recommended):*
-1. Run: `python -m ImageComparisonSystem.ui`
-2. Scroll to "Histogram Visualization" section
-3. Adjust desired parameters (bins, size, transparency, line width)
-4. Check/uncheck to show/hide histogram types
-5. Click "Start Comparison" - settings applied to all reports
-
-*Via Configuration File (Programmatic):*
+**Without FLIP (4-way split):**
 ```python
-from config import Config, HistogramConfig
-
-# Create custom histogram config
-hist_config = HistogramConfig(
-    bins=128,                    # Smooth visualization
-    figure_width=18,
-    figure_height=7,
-    grayscale_alpha=0.9,        # More opaque lines
-    rgb_alpha=0.85,
-    show_grayscale=True,
-    show_rgb=True
-)
-
-# Use with config
-config = Config(
-    base_dir='/path/to/images',
-    new_dir='new',
-    known_good_dir='known_good',
-    histogram_config=hist_config
-)
+composite_score = (
+    0.25 * normalize(pixel_diff) +
+    0.25 * normalize(1 - ssim) +
+    0.25 * normalize(color_distance) +
+    0.25 * normalize(histogram_chi_square)
+) * 100
 ```
 
-## Modular Architecture
+**With FLIP (5-way split):**
+```python
+composite_score = (
+    0.20 * normalize(flip_mean) +
+    0.20 * normalize(pixel_diff) +
+    0.20 * normalize(1 - ssim) +
+    0.20 * normalize(color_distance) +
+    0.20 * normalize(histogram_chi_square)
+) * 100
+```
 
-### Core Components
+**Default weights**: Equal weighting (auto-adjusts based on FLIP availability)
+**Configurable**: Adjust weights per project in database or via `composite_metric_weights` config parameter
 
-- **main.py**: Entry point and argument parsing
-- **config.py**: Configuration management with `Config` and `HistogramConfig` classes
-- **ui.py**: GUI interface using tkinter with full histogram visualization controls
-- **comparator.py**: Orchestrates the comparison workflow
-- **processor.py**: Image loading and diff generation with configurable histogram visualization
-- **analyzers.py**: Modular analysis components
-- **report_generator.py**: HTML report creation
+### FLIP Quality Descriptions
+
+| FLIP Mean | Description | Interpretation |
+|-----------|-------------|----------------|
+| < 0.01 | Imperceptible differences | Nearly identical to human eye |
+| 0.01 - 0.05 | Just noticeable differences | Visible under close inspection |
+| 0.05 - 0.10 | Slight perceptual differences | Noticeable but acceptable |
+| 0.10 - 0.20 | Moderate perceptual differences | Clear differences visible |
+| 0.20 - 0.50 | Noticeable perceptual differences | Significant quality impact |
+| > 0.50 | Significant perceptual differences | Major visual discrepancies |
+
+### Statistical Metrics (Historical)
+- **Historical Mean** - Average composite score across all runs
+- **Standard Deviation** - Measure of score variability
+- **Deviation from Mean** - Current score's σ distance from mean
+- **Anomaly Flag** - Automatic flagging if |deviation| > 2σ
+
+## 🎨 Output
+
+### HTML Reports
+
+After comparison, you get:
+
+1. **summary.html** - Overview sorted by composite score
+   - Table with avg/max differences per subdirectory
+   - Composite score column
+   - Anomaly count badges
+   - **FLIP heatmap thumbnails** (when FLIP enabled)
+
+2. **Individual Detail Pages** - One per image pair
+   - Side-by-side comparison
+   - Enhanced difference visualization
+   - **FLIP perceptual analysis section** with tabbed colormaps (when enabled)
+   - Annotated differences with bounding boxes
+   - **Historical trend chart** showing composite scores over time
+   - **Statistical analysis section** (mean, std dev, deviation)
+   - **Anomaly warning badges** for outliers
+   - Interactive histograms (RGB + grayscale)
+   - Full metrics breakdown
+
+3. **summary.md** - Markdown for CI/CD pipelines
+   - Build status summary
+   - Categorized results (passing, warning, critical)
+   - Statistics table
+   - ISO timestamps
+
+4. **results.json** - Machine-readable data
+
+### Database Exports
+
+- **COCO Format** - JSON with images, annotations, categories (for Detectron2, MMDetection, etc.)
+- **YOLO Format** - Text files with normalized coordinates + classes.txt (for YOLO models)
+
+## 🔬 Example Workflows
+
+### VFX Rendering Quality Assurance with FLIP
+
+```bash
+# Compare renders with perceptual analysis
+python main.py \
+  --base-dir ./vfx_renders \
+  --build-number "shot_042_v3" \
+  --enable-flip \
+  --flip-pixels-per-degree 42.0 \
+  --flip-colormaps viridis turbo \
+  --parallel \
+  --max-workers 8
+
+# Check for perceptual anomalies
+python -c "
+import json
+data = json.load(open('./vfx_renders/comparison_results/results.json'))
+flip_issues = [r for r in data['results'] if r.get('metrics', {}).get('FLIP Perceptual Metric', {}).get('flip_mean', 0) > 0.15]
+exit(1 if flip_issues else 0)
+"
+```
+
+### Continuous Integration Testing
+
+```bash
+# Jenkins/GitHub Actions/Azure DevOps
+python main.py \
+  --base-dir ./test_renders \
+  --build-number "$BUILD_ID" \
+  --parallel \
+  --max-workers 8 \
+  --log-file ci_log.txt
+
+# Check for anomalies (exit code 1 if any found)
+python -c "import json; data=json.load(open('test_renders/comparison_results/results.json')); exit(1 if any(r.get('is_anomaly') for r in data.get('results', [])) else 0)"
+```
+
+### ML Model Training Preparation
+
+```bash
+# 1. Run comparison with history
+python main.py --base-dir ./renders --build-number "v1.0"
+
+# 2. Manually annotate anomalies (via programmatic API or future UI)
+# ... add annotations to database ...
+
+# 3. Export annotations for training
+python main.py --base-dir ./renders --export-annotations --export-format coco
+
+# 4. Train your model
+# python train.py --data ./renders/.imgcomp_history/exports/annotations_run_*.json
+```
+
+### Regression Testing Over Time
+
+```bash
+# Week 1: Establish baseline
+python main.py --base-dir ./renders --build-number "baseline-001"
+
+# Week 2-N: Compare against baseline
+python main.py --base-dir ./renders --build-number "build-$(date +%Y%m%d)"
+
+# Review trends
+python main.py --base-dir ./renders --history-stats
+
+# Cleanup old data quarterly
+python main.py --base-dir ./renders --cleanup-history --max-age-days 90
+```
+
+## 🛠️ Customization
 
 ### Adding Custom Analyzers
 
-The system is designed to easily add new analysis metrics:
-
 ```python
 from analyzers import ImageAnalyzer, AnalyzerRegistry
+import numpy as np
 
 class MyCustomAnalyzer(ImageAnalyzer):
     @property
     def name(self) -> str:
         return "My Custom Metric"
-    
+
     def analyze(self, img1: np.ndarray, img2: np.ndarray) -> dict:
         # Your analysis logic here
+        custom_value = np.mean(np.abs(img1 - img2))
         return {
-            'custom_metric': some_calculation(img1, img2)
+            'custom_metric': float(custom_value),
+            'description': f"Custom value: {custom_value:.2f}"
         }
 
-# Register your analyzer
+# Register analyzer
 registry = AnalyzerRegistry()
 registry.register(MyCustomAnalyzer())
 ```
 
-### Supported Image Formats
+### Adjusting Composite Metric Weights
 
-- PNG
-- JPEG/JPG
-- BMP
-- TIFF
-- GIF
+```python
+from history import Database, CompositeMetricCalculator
 
-## Metrics Explained
+# With FLIP (5-way split)
+calculator = CompositeMetricCalculator(weights={
+    "flip": 0.40,               # Emphasize FLIP
+    "pixel_diff": 0.15,
+    "ssim": 0.15,
+    "color_distance": 0.15,
+    "histogram": 0.15
+})
 
-### Pixel Difference
-- **Percent Different**: Percentage of pixels that differ between images
-- **Changed Pixels**: Absolute count of different pixels
-- **Mean Absolute Error**: Average difference across all pixels
-- **Max Difference**: Largest single pixel difference
+# Without FLIP (4-way split)
+calculator = CompositeMetricCalculator(weights={
+    "pixel_diff": 0.4,          # Emphasize pixel differences
+    "ssim": 0.3,
+    "color_distance": 0.2,
+    "histogram": 0.1
+})
+```
 
-### Structural Similarity (SSIM)
-- **SSIM Score**: 0-1 scale, 1 = identical
-- **SSIM Percentage**: Difference as percentage (100% - SSIM × 100)
-- **Description**: Human-readable similarity level
+### Programmatic Annotation API
 
-### Color Difference
-- **Per-Channel Differences**: RGB channel-specific analysis
-- **Color Distance**: Euclidean distance in RGB space
-- **Significant Changes**: Count of pixels exceeding threshold
+```python
+from history import Database
+from annotations import AnnotationManager
 
-### Histogram Analysis
-- **Channel Correlation**: How similar the color distributions are (0-1 scale)
-- **Chi-Square Distance**: Statistical measure of histogram differences
-- **Visual Comparison**: Embedded histogram graphs in reports
+db = Database(".imgcomp_history/comparison_history.db")
+manager = AnnotationManager(db)
 
-### Dimensions
-- **Size Comparison**: Width × Height for both images
-- **Match Status**: Whether dimensions are identical
+# Add bounding box annotation
+ann_id = manager.add_annotation(
+    result_id=123,
+    annotation_type="bounding_box",
+    geometry={"x": 100, "y": 200, "width": 150, "height": 100},
+    label="rendering_artifact",
+    category="geometry_issues",
+    annotator_name="qa_team",
+    notes="Shadow rendering incorrect"
+)
 
-## Customizing Tolerances
+# Query annotations
+artifacts = manager.get_annotations_by_label("rendering_artifact")
+stats = manager.get_annotation_statistics()
+```
 
-All thresholds can be adjusted to suit your needs:
+## 💡 Tips & Best Practices
 
-**Pixel Difference Threshold** (0.01%): Lower values catch subtle changes, higher values reduce noise
-**Pixel Change Threshold** (1): Minimum pixel value change (0-255) to count as different
-**SSIM Threshold** (0.95): Structural similarity requirement (0-1, higher = stricter)
-**Color Distance Threshold** (10.0): RGB Euclidean distance for significant color changes
-**Min Contour Area** (50 pixels): Filters out small noise when drawing bounding boxes
+### General
+1. **Organize Images**: Use consistent filenames between `new/` and `known_good/` directories
+2. **For 3D Renders**: Enable histogram equalization to normalize lighting variations
+3. **Review Summary First**: Start with summary.html to identify worst offenders
+4. **Use Build Numbers**: Always specify `--build-number` to enable historical tracking
 
-## Customizing Visual Output
+### FLIP Usage
+5. **Start with Defaults**: Use default pixels_per_degree (67.0) initially
+6. **Multiple Colormaps**: Generate 2-3 colormaps for different viewing preferences
+7. **Enable for Critical QA**: Use FLIP for rendering validation, VFX, and visual quality testing
+8. **Parallel Processing with FLIP**: Always use `--parallel` when FLIP is enabled for large datasets
 
-**Highlight Color**: Change bounding box color
-- Red: `255,0,0` (default)
-- Blue: `0,0,255`
-- Green: `0,255,0`
-- Yellow: `255,255,0`
-- Magenta: `255,0,255`
+### Performance
+9. **Enable Parallel Processing**: Use `--parallel` for 100+ images
+10. **SSD Storage**: Keep databases on SSD for faster query performance
+11. **Cleanup Regularly**: Run retention policies quarterly to maintain optimal database size
 
-**Diff Enhancement**: Adjust contrast multiplication (1.0-10.0)
-- 1.0 = No enhancement (raw difference)
-- 5.0 = Default (good balance)
-- 10.0 = Maximum contrast (very sensitive)
+### Historical Tracking
+12. **Consistent Builds**: Use structured build numbers (e.g., "YYYY-MM-DD-###") for easy sorting
+13. **Annotate Anomalies**: Mark statistical outliers with annotations for future reference
+14. **Monitor Trends**: Check `--history-stats` periodically to understand metric drift
 
-## Tips
+### ML Training
+15. **Diverse Annotations**: Include multiple geometry types (bbox, polygon, point) for robust training
+16. **Label Consistency**: Use standardized labels and categories across all annotations
+17. **Export Regularly**: Export annotations after each annotation session to prevent data loss
 
-1. **Organize Your Images**: Ensure matching filenames between new and known-good directories
-2. **For 3D Renders**: Enable histogram equalization to ignore lighting variations
-3. **Adjust Color Threshold**: For 3D spaces, increase `--color-distance-threshold` to 20-30 to ignore subtle shading differences
-4. **Reduce Noise**: Increase `--min-contour-area` to 100-200 for cleaner bounding boxes on large images
-5. **Custom Highlighting**: Use different colors for different test runs (e.g., blue for geometry changes, red for texture changes)
-6. **Review Histograms**: Check histogram correlations to understand tonal shifts vs. structural changes
-7. **Review Summary First**: Start with summary.html to see worst offenders
-8. **Keyboard Navigation**: Press ESC to close full-size image overlays, or click the close button
-9. **Automation**: Use CLI mode in CI/CD pipelines for automated visual regression testing
-10. **Fine-tune SSIM**: Lower `--ssim-threshold` to 0.90 for more lenient comparisons, or raise to 0.98 for stricter matching
+### Configuration
+18. **Fine-tune SSIM**: Lower to 0.90 for lenient comparisons, raise to 0.98 for strict matching
+19. **Adjust Color Threshold**: For 3D scenes, increase to 20-30 to ignore subtle shading
+20. **Custom Weights**: Tailor composite metric weights to emphasize metrics important to your project
 
-## License
+## 📚 Documentation
+
+- **[README.md](README.md)** - This file (overview)
+- **[SETUP_GUIDE.md](SETUP_GUIDE.md)** - Installation and troubleshooting
+- **[FLIP_INTEGRATION_GUIDE.md](FLIP_INTEGRATION_GUIDE.md)** - Complete NVIDIA FLIP documentation
+- **[HISTORICAL_TRACKING_COMPLETE.md](HISTORICAL_TRACKING_COMPLETE.md)** - Complete historical features guide
+- **[RECENT_CHANGES.md](RECENT_CHANGES.md)** - Recent feature additions
+
+### Inline Documentation
+- All modules have comprehensive docstrings
+- Example usage in class/function docstrings
+- Type hints throughout codebase
+
+## 🧪 Testing
+
+```bash
+# Install test dependencies
+pip install pytest pytest-cov
+
+# Run all tests
+pytest tests/ -v
+
+# Run with coverage
+pytest tests/ --cov=ImageComparisonSystem --cov-report=html
+
+# Run specific test suites
+pytest tests/test_database.py -v
+pytest tests/test_annotation_manager.py -v
+pytest tests/test_export_formats.py -v
+pytest tests/test_flip*.py -v
+```
+
+**Test Coverage**: 140+ unit tests across all modules (including FLIP integration tests)
+
+## 🤝 Contributing
+
+Contributions welcome! The codebase is designed for easy extension:
+
+- **Analyzers**: Add new metrics via `AnalyzerRegistry`
+- **Exporters**: Add new annotation formats in `export_formats.py`
+- **Visualizations**: Extend `TrendChartGenerator` with new chart types
+- **Retention Policies**: Customize cleanup logic in `retention.py`
+
+## 📄 License
 
 MIT License - Feel free to use and modify as needed.
+
+## 🙏 Acknowledgments
+
+Built with:
+- **Pillow** - Image processing
+- **OpenCV** - Computer vision
+- **scikit-image** - SSIM calculation
+- **matplotlib** - Visualization
+- **numpy** - Numerical computing
+- **SQLite** - Database persistence
+- **NVIDIA FLIP** - Perceptual image comparison (optional)
+
+---
+
+**For support, bug reports, or feature requests**, please check existing documentation or create an issue in your repository.

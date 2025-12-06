@@ -195,3 +195,174 @@ class TestImageProcessorIntegration:
         assert isinstance(img1, np.ndarray)
         assert isinstance(img2, np.ndarray)
         assert img1.shape == img2.shape
+
+
+@pytest.mark.unit
+class TestFLIPVisualization:
+    """Test FLIP heatmap and visualization methods."""
+
+    def test_create_flip_heatmap_basic(self):
+        """create_flip_heatmap should create RGB heatmap from error map."""
+        # Create mock FLIP error map
+        flip_map = np.random.uniform(0, 0.5, (100, 100)).astype(np.float32)
+
+        processor = ImageProcessor()
+        heatmap = processor.create_flip_heatmap(flip_map, colormap="viridis")
+
+        # Should return RGB uint8 array
+        assert heatmap.shape == (100, 100, 3)
+        assert heatmap.dtype == np.uint8
+        # Values should be in valid range
+        assert heatmap.min() >= 0
+        assert heatmap.max() <= 255
+
+    def test_create_flip_heatmap_colormaps(self):
+        """create_flip_heatmap should support multiple colormaps."""
+        flip_map = np.random.uniform(0, 0.3, (50, 50)).astype(np.float32)
+        colormaps = ["viridis", "jet", "turbo", "magma"]
+
+        processor = ImageProcessor()
+
+        for cmap in colormaps:
+            heatmap = processor.create_flip_heatmap(flip_map, colormap=cmap)
+            assert heatmap.shape == (50, 50, 3)
+            assert heatmap.dtype == np.uint8
+
+    def test_create_flip_heatmap_normalization(self):
+        """create_flip_heatmap should normalize values when requested."""
+        # Create map with limited range
+        flip_map = np.random.uniform(0.1, 0.3, (100, 100)).astype(np.float32)
+
+        processor = ImageProcessor()
+
+        # With normalization, should use full colormap range
+        heatmap_norm = processor.create_flip_heatmap(flip_map, normalize=True)
+
+        # Without normalization, should respect absolute scale
+        heatmap_abs = processor.create_flip_heatmap(flip_map, normalize=False)
+
+        # Both should be valid
+        assert heatmap_norm.shape == (100, 100, 3)
+        assert heatmap_abs.shape == (100, 100, 3)
+
+        # Normalized version should use more of the color range
+        # (this is heuristic, but generally true)
+        norm_range = heatmap_norm.max() - heatmap_norm.min()
+        abs_range = heatmap_abs.max() - heatmap_abs.min()
+
+        # Normalized should typically have larger or equal range
+        assert norm_range >= abs_range * 0.5  # Allow some tolerance
+
+    def test_create_flip_heatmap_invalid_colormap_fallback(self):
+        """create_flip_heatmap should fallback to viridis for invalid colormap."""
+        flip_map = np.random.uniform(0, 0.3, (50, 50)).astype(np.float32)
+
+        processor = ImageProcessor()
+        # Should not crash, should fallback to viridis
+        heatmap = processor.create_flip_heatmap(flip_map, colormap="invalid_name")
+
+        assert heatmap.shape == (50, 50, 3)
+        assert heatmap.dtype == np.uint8
+
+    def test_create_flip_heatmaps_multi_colormap(self, tmp_path):
+        """create_flip_heatmaps_multi_colormap should generate multiple files."""
+        flip_map = np.random.uniform(0, 0.3, (100, 100)).astype(np.float32)
+        colormaps = ["viridis", "jet"]
+        output_dir = tmp_path / "flip_outputs"
+        base_filename = "test_image.png"
+
+        processor = ImageProcessor()
+        paths = processor.create_flip_heatmaps_multi_colormap(
+            flip_map, colormaps, output_dir, base_filename
+        )
+
+        # Should return dict with both colormaps
+        assert len(paths) == 2
+        assert "viridis" in paths
+        assert "jet" in paths
+
+        # Files should exist
+        assert paths["viridis"].exists()
+        assert paths["jet"].exists()
+
+        # Files should be valid images
+        img_viridis = Image.open(paths["viridis"])
+        img_jet = Image.open(paths["jet"])
+
+        assert img_viridis.size == (100, 100)
+        assert img_jet.size == (100, 100)
+
+    def test_create_flip_heatmaps_multi_colormap_creates_directory(self, tmp_path):
+        """create_flip_heatmaps_multi_colormap should create output directory if needed."""
+        flip_map = np.random.uniform(0, 0.3, (50, 50)).astype(np.float32)
+        output_dir = tmp_path / "nested" / "flip_outputs"  # Doesn't exist yet
+        base_filename = "test.png"
+
+        processor = ImageProcessor()
+
+        # Should not crash, should create directory
+        paths = processor.create_flip_heatmaps_multi_colormap(
+            flip_map, ["viridis"], output_dir, base_filename
+        )
+
+        assert output_dir.exists()
+        assert paths["viridis"].exists()
+
+    def test_generate_flip_comparison_image_returns_base64(self):
+        """generate_flip_comparison_image should return base64 encoded image."""
+        # Create test images
+        img1 = np.ones((100, 100, 3), dtype=np.uint8) * 128
+        img2 = np.ones((100, 100, 3), dtype=np.uint8) * 130
+        flip_map = np.random.uniform(0, 0.2, (100, 100)).astype(np.float32)
+
+        processor = ImageProcessor()
+        result = processor.generate_flip_comparison_image(
+            img1, img2, flip_map, colormap="viridis"
+        )
+
+        # Should be base64 string
+        assert isinstance(result, str)
+        assert len(result) > 0
+
+        # Should be valid base64
+        assert all(
+            c in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="
+            for c in result
+        )
+
+    def test_generate_flip_comparison_image_with_colormaps(self):
+        """generate_flip_comparison_image should work with different colormaps."""
+        img1 = np.random.randint(0, 256, (100, 100, 3), dtype=np.uint8)
+        img2 = np.random.randint(0, 256, (100, 100, 3), dtype=np.uint8)
+        flip_map = np.random.uniform(0, 0.3, (100, 100)).astype(np.float32)
+
+        processor = ImageProcessor()
+
+        for cmap in ["viridis", "jet", "turbo", "magma"]:
+            result = processor.generate_flip_comparison_image(
+                img1, img2, flip_map, colormap=cmap
+            )
+            assert isinstance(result, str)
+            assert len(result) > 100  # Should be substantial
+
+    def test_flip_heatmap_zero_values(self):
+        """create_flip_heatmap should handle all-zero error map."""
+        flip_map = np.zeros((100, 100), dtype=np.float32)
+
+        processor = ImageProcessor()
+        heatmap = processor.create_flip_heatmap(flip_map, colormap="viridis")
+
+        # Should not crash
+        assert heatmap.shape == (100, 100, 3)
+        assert heatmap.dtype == np.uint8
+
+    def test_flip_heatmap_max_values(self):
+        """create_flip_heatmap should handle all-max error map."""
+        flip_map = np.ones((100, 100), dtype=np.float32)  # All 1.0 (max error)
+
+        processor = ImageProcessor()
+        heatmap = processor.create_flip_heatmap(flip_map, colormap="viridis")
+
+        # Should not crash
+        assert heatmap.shape == (100, 100, 3)
+        assert heatmap.dtype == np.uint8

@@ -21,15 +21,29 @@ DEFAULT_NORMALIZATION = {
     "ssim_max": 1.0,
     "color_distance_max": 441.67,   # Max RGB distance: sqrt(255^2 * 3)
     "histogram_chi_square_max": 2.0, # Typical max for chi-square
+    "flip_min": 0.0,                # FLIP error (0-1 scale)
+    "flip_max": 1.0,                # 0 = identical, 1 = max perceptual difference
 }
 
-# Default weights (equal weighting across all metric categories)
-DEFAULT_WEIGHTS = {
+# Default weights without FLIP (4-way split for backward compatibility)
+DEFAULT_WEIGHTS_WITHOUT_FLIP = {
     "pixel_diff": 0.25,
     "ssim": 0.25,
     "color_distance": 0.25,
     "histogram": 0.25,
 }
+
+# Default weights with FLIP (5-way equal split)
+DEFAULT_WEIGHTS_WITH_FLIP = {
+    "flip": 0.20,
+    "pixel_diff": 0.20,
+    "ssim": 0.20,
+    "color_distance": 0.20,
+    "histogram": 0.20,
+}
+
+# For backward compatibility
+DEFAULT_WEIGHTS = DEFAULT_WEIGHTS_WITHOUT_FLIP
 
 
 def normalize(value: float, min_val: float, max_val: float) -> float:
@@ -124,10 +138,17 @@ class CompositeMetricCalculator:
         """
         Validate that weights are valid and sum to approximately 1.0.
 
+        Supports both 4-metric (without FLIP) and 5-metric (with FLIP) configurations.
+
         Raises:
             ValueError: If weights are invalid
         """
+        # Required keys depend on whether FLIP is included
         required_keys = {"pixel_diff", "ssim", "color_distance", "histogram"}
+
+        # FLIP is optional
+        has_flip = "flip" in self.weights
+
         if not all(key in self.weights for key in required_keys):
             missing = required_keys - set(self.weights.keys())
             raise ValueError(f"Missing weight keys: {missing}")
@@ -146,6 +167,10 @@ class CompositeMetricCalculator:
             # Normalize weights to sum to 1.0
             for key in self.weights:
                 self.weights[key] /= weight_sum
+
+        # Log configuration
+        config_type = "with FLIP (5-way)" if has_flip else "without FLIP (4-way)"
+        logger.debug(f"Composite metric configuration: {config_type}, weights={self.weights}")
 
     def calculate_composite_score(
         self,
@@ -170,6 +195,20 @@ class CompositeMetricCalculator:
             >>> print(f"Composite score: {score:.2f}")
         """
         metrics = result.metrics
+
+        # Check if FLIP is available in results
+        has_flip = "FLIP Perceptual Metric" in metrics
+        use_flip = has_flip and "flip" in self.weights
+
+        # Extract and normalize FLIP (if available)
+        flip_norm = 0.0
+        if use_flip:
+            flip_mean = safe_get_metric(metrics, "FLIP Perceptual Metric", "flip_mean", 0.0)
+            flip_norm = normalize(
+                flip_mean,
+                self.normalization["flip_min"],
+                self.normalization["flip_max"]
+            )
 
         # Extract and normalize pixel difference (already 0-100%)
         pixel_diff = safe_get_metric(metrics, "Pixel Difference", "percent_different", 0.0)
@@ -213,21 +252,38 @@ class CompositeMetricCalculator:
         )
 
         # Calculate weighted composite score
-        composite = (
-            self.weights["pixel_diff"] * pixel_diff_norm +
-            self.weights["ssim"] * ssim_diff_norm +
-            self.weights["color_distance"] * color_distance_norm +
-            self.weights["histogram"] * histogram_norm
-        )
+        if use_flip:
+            # 5-way composite with FLIP
+            composite = (
+                self.weights["flip"] * flip_norm +
+                self.weights["pixel_diff"] * pixel_diff_norm +
+                self.weights["ssim"] * ssim_diff_norm +
+                self.weights["color_distance"] * color_distance_norm +
+                self.weights["histogram"] * histogram_norm
+            )
+            debug_msg = (
+                f"Composite score for {result.filename}: {composite * 100.0:.2f} "
+                f"(flip={flip_norm:.2f}, pixel={pixel_diff_norm:.2f}, ssim={ssim_diff_norm:.2f}, "
+                f"color={color_distance_norm:.2f}, hist={histogram_norm:.2f})"
+            )
+        else:
+            # 4-way composite without FLIP (backward compatible)
+            composite = (
+                self.weights.get("pixel_diff", 0.25) * pixel_diff_norm +
+                self.weights.get("ssim", 0.25) * ssim_diff_norm +
+                self.weights.get("color_distance", 0.25) * color_distance_norm +
+                self.weights.get("histogram", 0.25) * histogram_norm
+            )
+            debug_msg = (
+                f"Composite score for {result.filename}: {composite * 100.0:.2f} "
+                f"(pixel={pixel_diff_norm:.2f}, ssim={ssim_diff_norm:.2f}, "
+                f"color={color_distance_norm:.2f}, hist={histogram_norm:.2f})"
+            )
 
         # Scale to 0-100 range
         composite_score = composite * 100.0
 
-        logger.debug(
-            f"Composite score for {result.filename}: {composite_score:.2f} "
-            f"(pixel={pixel_diff_norm:.2f}, ssim={ssim_diff_norm:.2f}, "
-            f"color={color_distance_norm:.2f}, hist={histogram_norm:.2f})"
-        )
+        logger.debug(debug_msg)
 
         return composite_score
 

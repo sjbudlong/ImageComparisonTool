@@ -50,22 +50,29 @@ class ImageComparator:
         self.config: Config = config
         self.analyzer_registry: AnalyzerRegistry = AnalyzerRegistry(config)
         self.processor: ImageProcessor = ImageProcessor(config)
-        self.report_generator: ReportGenerator = ReportGenerator(config)
 
-        # Initialize history manager if enabled
+        # Initialize history manager if enabled (before ReportGenerator)
         self.history_manager: Optional[HistoryManager] = None
+        logger.info(f"Checking history configuration: enable_history={config.enable_history}, HistoryManager available={HistoryManager is not None}")
         if config.enable_history and HistoryManager is not None:
             try:
-                # Initialize database
-                db = Database(config.history_db_path)
-                self.history_manager = HistoryManager(db, config)
-                logger.info(f"History tracking enabled: {config.history_db_path}")
+                # HistoryManager handles database initialization and default path
+                self.history_manager = HistoryManager(config)
+                logger.info(f"History tracking enabled: {self.history_manager.db_path}")
                 if config.build_number:
                     logger.info(f"Build number: {config.build_number}")
             except Exception as e:
                 logger.warning(f"Failed to initialize history tracking: {e}")
                 logger.warning("Continuing without history tracking")
                 self.history_manager = None
+        else:
+            if not config.enable_history:
+                logger.info("History tracking is disabled in config")
+            if HistoryManager is None:
+                logger.warning("HistoryManager could not be imported")
+
+        # Initialize report generator with history manager
+        self.report_generator: ReportGenerator = ReportGenerator(config, history_manager=self.history_manager)
 
         # Ensure output directories exist
         self.config.diff_path.mkdir(parents=True, exist_ok=True)
@@ -320,6 +327,34 @@ class ImageComparator:
             processor.save_image(diff_img, diff_path)
             processor.save_image(annotated_img, annotated_path)
 
+            # Generate FLIP heatmap thumbnails if FLIP is enabled
+            flip_heatmap_path = None
+            if (
+                config.enable_flip
+                and "FLIP Perceptual Metric" in metrics
+                and "flip_error_map_array" in metrics["FLIP Perceptual Metric"]
+            ):
+                try:
+                    flip_map = metrics["FLIP Perceptual Metric"]["flip_error_map_array"]
+
+                    # Generate heatmaps for all configured colormaps
+                    flip_heatmap_paths = processor.create_flip_heatmaps_multi_colormap(
+                        flip_map,
+                        config.flip_colormaps,
+                        config.diff_path,
+                        new_path.name,
+                    )
+
+                    # Use default colormap heatmap as primary thumbnail
+                    default_colormap = config.flip_default_colormap
+                    if default_colormap in flip_heatmap_paths:
+                        flip_heatmap_path = flip_heatmap_paths[default_colormap]
+                except Exception as e:
+                    logger.warning(f"Worker failed to generate FLIP heatmap for {new_path.name}: {e}")
+
+            # Use FLIP heatmap as primary thumbnail when available, otherwise use diff
+            primary_thumbnail = flip_heatmap_path if flip_heatmap_path else diff_path
+
             # Calculate percent difference
             percent_diff = metrics.get("Pixel Difference", {}).get(
                 "percent_different", 0.0
@@ -329,7 +364,7 @@ class ImageComparator:
                 filename=new_path.name,
                 new_image_path=new_path,
                 known_good_path=known_good_path,
-                diff_image_path=diff_path,
+                diff_image_path=primary_thumbnail,  # Now uses FLIP heatmap when available
                 annotated_image_path=annotated_path,
                 metrics=metrics,
                 percent_different=percent_diff,
@@ -542,11 +577,43 @@ class ImageComparator:
         self.processor.save_image(diff_img, diff_path)
         self.processor.save_image(annotated_img, annotated_path)
 
+        # Generate FLIP heatmap thumbnails if FLIP is enabled
+        flip_heatmap_path = None
+        if (
+            self.config.enable_flip
+            and "FLIP Perceptual Metric" in metrics
+            and "flip_error_map_array" in metrics["FLIP Perceptual Metric"]
+        ):
+            try:
+                flip_map = metrics["FLIP Perceptual Metric"]["flip_error_map_array"]
+
+                # Generate heatmaps for all configured colormaps
+                flip_heatmap_paths = self.processor.create_flip_heatmaps_multi_colormap(
+                    flip_map,
+                    self.config.flip_colormaps,
+                    self.config.diff_path,
+                    new_path.name,
+                )
+
+                # Use default colormap heatmap as primary thumbnail
+                default_colormap = self.config.flip_default_colormap
+                if default_colormap in flip_heatmap_paths:
+                    flip_heatmap_path = flip_heatmap_paths[default_colormap]
+                    logger.debug(
+                        f"Generated FLIP heatmap thumbnail for {new_path.name} "
+                        f"using {default_colormap} colormap"
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to generate FLIP heatmap for {new_path.name}: {e}")
+
+        # Use FLIP heatmap as primary thumbnail when available, otherwise use diff
+        primary_thumbnail = flip_heatmap_path if flip_heatmap_path else diff_path
+
         return ComparisonResult(
             filename=new_path.name,
             new_image_path=new_path,
             known_good_path=known_good_path,
-            diff_image_path=diff_path,
+            diff_image_path=primary_thumbnail,  # Now uses FLIP heatmap when available
             annotated_image_path=annotated_path,
             metrics=metrics,
             percent_different=percent_diff,

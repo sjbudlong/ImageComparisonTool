@@ -182,3 +182,139 @@ class TestConfig:
         assert config.histogram_config.show_rgb is False
 
         logger.info("✓ Config custom HistogramConfig test passed")
+
+    def test_config_flip_defaults(self, temp_image_dir):
+        """Config should have correct FLIP default values."""
+        logger.debug("Testing Config FLIP default values")
+        config = Config(
+            base_dir=temp_image_dir, new_dir="new", known_good_dir="known_good"
+        )
+
+        # FLIP disabled by default
+        assert config.enable_flip is False
+        assert config.flip_pixels_per_degree == 67.0
+        assert config.flip_colormaps == ["viridis"]
+        assert config.flip_default_colormap == "viridis"
+
+        # Visualization toggles default to True
+        assert config.show_flip_visualization is True
+        assert config.show_ssim_visualization is True
+        assert config.show_pixel_diff_visualization is True
+        assert config.show_color_distance_visualization is True
+        assert config.show_histogram_visualization is True
+        assert config.show_dimension_visualization is True
+
+        logger.info("✓ Config FLIP default values test passed")
+
+    def test_config_flip_enabled_custom_values(self, temp_image_dir):
+        """Config should accept custom FLIP values when enabled."""
+        logger.debug("Testing Config with custom FLIP values")
+        config = Config(
+            base_dir=temp_image_dir,
+            new_dir="new",
+            known_good_dir="known_good",
+            enable_flip=True,
+            flip_pixels_per_degree=42.0,
+            flip_colormaps=["viridis", "jet", "turbo"],
+            flip_default_colormap="jet",
+        )
+
+        assert config.enable_flip is True
+        assert config.flip_pixels_per_degree == 42.0
+        assert config.flip_colormaps == ["viridis", "jet", "turbo"]
+        assert config.flip_default_colormap == "jet"
+
+        logger.info("✓ Config custom FLIP values test passed")
+
+    def test_config_flip_invalid_colormap_raises_error(self, temp_image_dir):
+        """Config should reject invalid FLIP colormaps."""
+        logger.debug("Testing Config with invalid FLIP colormap")
+
+        with pytest.raises(ValueError) as exc_info:
+            Config(
+                base_dir=temp_image_dir,
+                new_dir="new",
+                known_good_dir="known_good",
+                enable_flip=True,
+                flip_colormaps=["viridis", "invalid_colormap"],
+            )
+
+        assert "Invalid FLIP colormaps" in str(exc_info.value)
+        assert "invalid_colormap" in str(exc_info.value)
+        logger.info("✓ Config invalid FLIP colormap validation test passed")
+
+    def test_config_flip_default_colormap_not_in_list_raises_error(self, temp_image_dir):
+        """Config should reject default colormap not in colormaps list."""
+        logger.debug("Testing Config with default colormap not in list")
+
+        with pytest.raises(ValueError) as exc_info:
+            Config(
+                base_dir=temp_image_dir,
+                new_dir="new",
+                known_good_dir="known_good",
+                enable_flip=True,
+                flip_colormaps=["viridis", "jet"],
+                flip_default_colormap="turbo",
+            )
+
+        assert "flip_default_colormap" in str(exc_info.value)
+        assert "must be one of flip_colormaps" in str(exc_info.value)
+        logger.info("✓ Config default colormap validation test passed")
+
+    def test_config_flip_validation_skipped_when_disabled(self, temp_image_dir):
+        """Config should skip FLIP validation when FLIP is disabled."""
+        logger.debug("Testing Config skips FLIP validation when disabled")
+
+        # Should not raise error even with invalid colormap, since FLIP is disabled
+        config = Config(
+            base_dir=temp_image_dir,
+            new_dir="new",
+            known_good_dir="known_good",
+            enable_flip=False,
+            flip_colormaps=["invalid_colormap"],  # Invalid but not validated
+        )
+
+        assert config.enable_flip is False
+        logger.info("✓ Config FLIP validation skipped when disabled test passed")
+
+    def test_config_visualization_toggles_custom(self, temp_image_dir):
+        """Config should accept custom visualization toggle values."""
+        logger.debug("Testing Config with custom visualization toggles")
+        config = Config(
+            base_dir=temp_image_dir,
+            new_dir="new",
+            known_good_dir="known_good",
+            show_flip_visualization=False,
+            show_ssim_visualization=False,
+            show_pixel_diff_visualization=True,
+            show_color_distance_visualization=False,
+            show_histogram_visualization=True,
+            show_dimension_visualization=False,
+        )
+
+        assert config.show_flip_visualization is False
+        assert config.show_ssim_visualization is False
+        assert config.show_pixel_diff_visualization is True
+        assert config.show_color_distance_visualization is False
+        assert config.show_histogram_visualization is True
+        assert config.show_dimension_visualization is False
+
+        logger.info("✓ Config custom visualization toggles test passed")
+
+    def test_config_flip_all_valid_colormaps(self, temp_image_dir):
+        """Config should accept all valid FLIP colormaps."""
+        logger.debug("Testing Config with all valid FLIP colormaps")
+
+        valid_colormaps = ["viridis", "jet", "turbo", "magma"]
+        config = Config(
+            base_dir=temp_image_dir,
+            new_dir="new",
+            known_good_dir="known_good",
+            enable_flip=True,
+            flip_colormaps=valid_colormaps,
+            flip_default_colormap="magma",
+        )
+
+        assert config.flip_colormaps == valid_colormaps
+        assert config.flip_default_colormap == "magma"
+        logger.info("✓ Config all valid FLIP colormaps test passed")

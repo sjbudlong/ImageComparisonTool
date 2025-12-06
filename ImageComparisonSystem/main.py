@@ -235,6 +235,112 @@ def parse_arguments() -> Optional[tuple]:
         help="Output path for exported annotations (default: .imgcomp_history/exports/)",
     )
 
+    # FLIP (perceptual metric) arguments
+    parser.add_argument(
+        "--enable-flip",
+        action="store_true",
+        help="Enable NVIDIA FLIP perceptual image comparison (opt-in for performance)",
+    )
+    parser.add_argument(
+        "--flip-pixels-per-degree",
+        type=float,
+        default=67.0,
+        help="FLIP viewing distance parameter (67.0 = 0.7m on 24\" 1080p display)",
+    )
+    parser.add_argument(
+        "--flip-colormaps",
+        type=str,
+        nargs="+",
+        default=["viridis"],
+        help="FLIP heatmap colormaps to generate (viridis, jet, turbo, magma)",
+    )
+    parser.add_argument(
+        "--flip-default-colormap",
+        type=str,
+        default="viridis",
+        help="Default FLIP colormap for reports (must be in --flip-colormaps)",
+    )
+
+    # Visualization toggle arguments
+    parser.add_argument(
+        "--show-flip",
+        dest="show_flip_visualization",
+        action="store_true",
+        default=True,
+        help="Show FLIP visualizations in reports (default: True)",
+    )
+    parser.add_argument(
+        "--no-show-flip",
+        dest="show_flip_visualization",
+        action="store_false",
+        help="Hide FLIP visualizations in reports",
+    )
+    parser.add_argument(
+        "--show-ssim",
+        dest="show_ssim_visualization",
+        action="store_true",
+        default=True,
+        help="Show SSIM visualizations in reports (default: True)",
+    )
+    parser.add_argument(
+        "--no-show-ssim",
+        dest="show_ssim_visualization",
+        action="store_false",
+        help="Hide SSIM visualizations in reports",
+    )
+    parser.add_argument(
+        "--show-pixel-diff",
+        dest="show_pixel_diff_visualization",
+        action="store_true",
+        default=True,
+        help="Show pixel difference visualizations in reports (default: True)",
+    )
+    parser.add_argument(
+        "--no-show-pixel-diff",
+        dest="show_pixel_diff_visualization",
+        action="store_false",
+        help="Hide pixel difference visualizations in reports",
+    )
+    parser.add_argument(
+        "--show-color-distance",
+        dest="show_color_distance_visualization",
+        action="store_true",
+        default=True,
+        help="Show color distance visualizations in reports (default: True)",
+    )
+    parser.add_argument(
+        "--no-show-color-distance",
+        dest="show_color_distance_visualization",
+        action="store_false",
+        help="Hide color distance visualizations in reports",
+    )
+    parser.add_argument(
+        "--show-histogram",
+        dest="show_histogram_visualization",
+        action="store_true",
+        default=True,
+        help="Show histogram visualizations in reports (default: True)",
+    )
+    parser.add_argument(
+        "--no-show-histogram",
+        dest="show_histogram_visualization",
+        action="store_false",
+        help="Hide histogram visualizations in reports",
+    )
+    parser.add_argument(
+        "--show-dimension",
+        dest="show_dimension_visualization",
+        action="store_true",
+        default=True,
+        help="Show dimension check visualizations in reports (default: True)",
+    )
+    parser.add_argument(
+        "--no-show-dimension",
+        dest="show_dimension_visualization",
+        action="store_false",
+        help="Hide dimension check visualizations in reports",
+    )
+
     args = parser.parse_args()
 
     # If --gui flag is set, skip CLI mode and return None to trigger GUI
@@ -292,6 +398,18 @@ def parse_arguments() -> Optional[tuple]:
                 build_number=args.build_number,
                 commit_hash=args.commit_hash,
                 history_db_path=history_db_path,
+                # FLIP configuration
+                enable_flip=args.enable_flip,
+                flip_pixels_per_degree=args.flip_pixels_per_degree,
+                flip_colormaps=args.flip_colormaps,
+                flip_default_colormap=args.flip_default_colormap,
+                # Visualization toggles
+                show_flip_visualization=args.show_flip_visualization,
+                show_ssim_visualization=args.show_ssim_visualization,
+                show_pixel_diff_visualization=args.show_pixel_diff_visualization,
+                show_color_distance_visualization=args.show_color_distance_visualization,
+                show_histogram_visualization=args.show_histogram_visualization,
+                show_dimension_visualization=args.show_dimension_visualization,
             ),
             args,
         )

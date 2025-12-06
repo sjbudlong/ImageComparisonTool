@@ -6,8 +6,8 @@ including paths, tolerances, and visual settings.
 """
 
 from pathlib import Path
-from dataclasses import dataclass
-from typing import Tuple, Optional, Dict
+from dataclasses import dataclass, field
+from typing import Tuple, Optional, Dict, List
 
 
 @dataclass
@@ -143,6 +143,30 @@ class Config:
     commit_hash: Optional[str] = None
     """Git commit hash for reproducibility. Allows recreating the exact environment that generated this run."""
 
+    # FLIP Configuration (NVIDIA FLIP perceptual metric)
+    enable_flip: bool = False
+    """Whether to enable FLIP (FLaws in Luminance and Pixels) analysis. Default: False (opt-in for performance)."""
+    flip_pixels_per_degree: float = 67.0
+    """Viewing distance parameter for FLIP. 67.0 = 0.7m viewing distance on 24" 1080p display."""
+    flip_colormaps: List[str] = field(default_factory=lambda: ["viridis"])
+    """List of colormaps to generate for FLIP heatmaps. Options: viridis, jet, turbo, magma."""
+    flip_default_colormap: str = "viridis"
+    """Default colormap to display in reports. Must be one of flip_colormaps."""
+
+    # Visualization Toggles (allows hiding specific analyzer outputs in reports)
+    show_flip_visualization: bool = True
+    """Whether to include FLIP visualizations in reports (if FLIP is enabled)."""
+    show_ssim_visualization: bool = True
+    """Whether to include SSIM visualizations in reports."""
+    show_pixel_diff_visualization: bool = True
+    """Whether to include pixel difference visualizations in reports."""
+    show_color_distance_visualization: bool = True
+    """Whether to include color distance visualizations in reports."""
+    show_histogram_visualization: bool = True
+    """Whether to include histogram visualizations in reports."""
+    show_dimension_visualization: bool = True
+    """Whether to include dimension check visualizations in reports."""
+
     def __post_init__(self) -> None:
         """Convert string paths to Path objects and validate.
 
@@ -162,6 +186,21 @@ class Config:
         # Convert history_db_path to Path if it's a string
         if isinstance(self.history_db_path, str):
             self.history_db_path = Path(self.history_db_path)
+
+        # Validate FLIP colormap settings
+        if self.enable_flip:
+            valid_colormaps = {"viridis", "jet", "turbo", "magma"}
+            invalid_colormaps = set(self.flip_colormaps) - valid_colormaps
+            if invalid_colormaps:
+                raise ValueError(
+                    f"Invalid FLIP colormaps: {invalid_colormaps}. "
+                    f"Valid options: {valid_colormaps}"
+                )
+            if self.flip_default_colormap not in self.flip_colormaps:
+                raise ValueError(
+                    f"flip_default_colormap '{self.flip_default_colormap}' "
+                    f"must be one of flip_colormaps: {self.flip_colormaps}"
+                )
 
     @property
     def new_path(self) -> Path:

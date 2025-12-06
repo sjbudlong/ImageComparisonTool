@@ -12,8 +12,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Tuple
 
-from ..models import ComparisonResult
-from .database import Database
+# Handle both package and direct module imports
+try:
+    from ..models import ComparisonResult
+    from .database import Database
+except (ImportError, ValueError):
+    try:
+        from models import ComparisonResult  # type: ignore
+        from history.database import Database  # type: ignore
+    except ImportError:
+        from ImageComparisonSystem.models import ComparisonResult  # type: ignore
+        from ImageComparisonSystem.history.database import Database  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +47,16 @@ class HistoryManager:
         # Determine database path
         if config.history_db_path:
             self.db_path = Path(config.history_db_path)
+            logger.info(f"Custom history_db_path provided: {config.history_db_path}")
+
+            # If user provided a directory, append the database filename
+            if self.db_path.is_dir() or (not self.db_path.suffix and not self.db_path.exists()):
+                # It's a directory (or looks like one) - append filename
+                logger.info(f"Path is a directory, appending 'comparison_history.db' filename")
+                self.db_path = self.db_path / "comparison_history.db"
+
+            # Ensure parent directory exists for custom path
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
         else:
             # Default: <base_dir>/.imgcomp_history/comparison_history.db
             history_dir = config.base_dir / ".imgcomp_history"
@@ -89,6 +108,13 @@ class HistoryManager:
                 "diff_enhancement_factor": config.diff_enhancement_factor,
             }
 
+            # Generate build number if not provided
+            build_number = config.build_number
+            if build_number is None:
+                # Auto-generate build number from timestamp
+                build_number = f"auto_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                logger.info(f"Auto-generated build number: {build_number}")
+
             # Insert run record
             run_id = self.db.execute_insert(
                 """INSERT INTO runs (
@@ -96,7 +122,7 @@ class HistoryManager:
                     config_snapshot, total_images, avg_difference, max_difference, notes, commit_hash
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
-                    config.build_number,
+                    build_number,
                     datetime.now().isoformat(),
                     str(config.base_dir),
                     config.new_dir,

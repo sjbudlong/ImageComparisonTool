@@ -13,17 +13,13 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-# Try to import Database and AnnotationManager
+# Import Database and AnnotationManager with proper path handling
 try:
     from ..history.database import Database
     from .annotation_manager import AnnotationManager
-except ImportError:
-    try:
-        from history.database import Database  # type: ignore
-        from annotation_manager import AnnotationManager  # type: ignore
-    except ImportError:
-        from ImageComparisonSystem.history.database import Database  # type: ignore
-        from ImageComparisonSystem.annotations.annotation_manager import AnnotationManager  # type: ignore
+except (ImportError, ValueError):
+    from ImageComparisonSystem.history.database import Database
+    from ImageComparisonSystem.annotations.annotation_manager import AnnotationManager
 
 
 class COCOExporter:

@@ -8,14 +8,17 @@ image comparisons and summary pages showing all results.
 import logging
 from pathlib import Path
 from typing import List, Optional
+import numpy as np
 
 # Handle both package and direct module imports
 try:
     from .config import Config
     from .models import ComparisonResult
+    from .processor import ImageProcessor
 except ImportError:
     from config import Config  # type: ignore
     from models import ComparisonResult  # type: ignore
+    from processor import ImageProcessor  # type: ignore
 
 # Try to import visualization module (optional)
 try:
@@ -52,15 +55,24 @@ class ReportGenerator:
             "Compares histograms for each color channel (RGB). "
             "Useful for detecting lighting or contrast changes."
         ),
+        "FLIP Perceptual Metric": (
+            "NVIDIA FLIP (FLaws in Luminance and Pixels) is an advanced perceptual metric "
+            "that closely matches human visual perception. Accounts for spatial frequency sensitivity, "
+            "viewing distance, luminance adaptation, and chrominance. "
+            "Values range from 0 (imperceptible differences) to 1 (significant perceptual differences). "
+            "Superior to SSIM for rendering quality assessment and VFX/gaming workflows."
+        ),
     }
 
-    def __init__(self, config: Config) -> None:
+    def __init__(self, config: Config, history_manager=None) -> None:
         """Initialize report generator.
 
         Args:
             config: Configuration object with output paths
+            history_manager: Optional HistoryManager for trend chart data
         """
         self.config: Config = config
+        self.history_manager = history_manager
 
         # Initialize chart generator if available
         self.chart_generator = None
@@ -128,7 +140,48 @@ class ReportGenerator:
                     pass
 
             # Generate historical section if available
-            historical_section = self._generate_historical_section(result, historical_data=None)
+            historical_data = None
+            if self.history_manager and hasattr(result, 'composite_score') and result.composite_score is not None:
+                try:
+                    # Get subdirectory for this result
+                    subdirectory = result.get_subdirectory(self.config.new_path)
+
+                    # Query historical data for trend charts
+                    history_records = self.history_manager.get_history_for_image(
+                        result.filename,
+                        subdirectory=subdirectory if subdirectory else None,
+                        limit=50  # Last 50 runs for trend visualization
+                    )
+
+                    # Format for trend chart: list of dicts with 'timestamp' and 'composite_score'
+                    historical_data = [
+                        {
+                            'timestamp': h['timestamp'],
+                            'composite_score': h['composite_score']
+                        }
+                        for h in history_records
+                        if h.get('composite_score') is not None
+                    ]
+
+                    logger.debug(f"Retrieved {len(historical_data)} historical data points for {result.filename}")
+                except Exception as e:
+                    logger.warning(f"Failed to retrieve historical data for {result.filename}: {e}")
+                    historical_data = None
+
+            historical_section = self._generate_historical_section(result, historical_data=historical_data)
+
+            # Generate FLIP section if available
+            flip_section = self._generate_flip_section(result)
+
+            # Generate histogram section (conditional on config)
+            histogram_section = ""
+            if self.config.show_histogram_visualization and result.histogram_data:
+                histogram_section = f'''
+                <div class="metrics">
+                    <h2>Histogram Comparison</h2>
+                    <img src="data:image/png;base64,{result.histogram_data}" alt="Histograms" style="width: 100%; max-width: 1000px; margin: 20px 0;">
+                </div>
+                '''
 
             html: str = self._get_html_template()
             html = html.replace("{{TITLE}}", f"Comparison: {result.filename}")
@@ -139,7 +192,8 @@ class ReportGenerator:
             html = html.replace("{{DIFF_IMAGE}}", diff_rel)
             html = html.replace("{{ANNOTATED_IMAGE}}", annotated_rel)
             html = html.replace("{{METRICS}}", self._format_metrics(result.metrics))
-            html = html.replace("{{HISTOGRAM_DATA}}", result.histogram_data or "")
+            html = html.replace("{{FLIP_SECTION}}", flip_section)
+            html = html.replace("{{HISTOGRAM_SECTION}}", histogram_section)
             html = html.replace("{{HISTORICAL_SECTION}}", historical_section)
             html = html.replace("{{BREADCRUMB_MIDDLE}}", breadcrumb_middle)
             html = html.replace("{{SUBDIR_LINK}}", subdir_link)
@@ -234,9 +288,13 @@ class ReportGenerator:
             """
                 rows_html.append(row)
 
+            # Generate configuration section
+            config_section = self._generate_config_section()
+
             summary_html = self._get_summary_template()
             summary_html = summary_html.replace("{{TOTAL_COUNT}}", str(len(results)))
             summary_html = summary_html.replace("{{ROWS}}", "\n".join(rows_html))
+            summary_html = summary_html.replace("{{CONFIG_SECTION}}", config_section)
 
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(summary_html)
@@ -466,6 +524,120 @@ class ReportGenerator:
         # Navigation is now handled in generate_detail_report
         return ""
 
+    def _generate_flip_section(self, result: ComparisonResult) -> str:
+        """
+        Generate HTML for FLIP perceptual metric visualization with tabbed colormaps.
+
+        Creates a multi-panel visualization with colormap tabs if FLIP metrics
+        are present in the result.
+
+        Args:
+            result: ComparisonResult with FLIP metrics
+
+        Returns:
+            HTML string for FLIP section, or empty string if FLIP not available
+        """
+        # Check if FLIP metrics are present and visualization is enabled
+        if not self.config.show_flip_visualization:
+            return ""
+
+        if "FLIP Perceptual Metric" not in result.metrics:
+            return ""
+
+        flip_metrics = result.metrics["FLIP Perceptual Metric"]
+
+        # Check if FLIP error map is available
+        if "flip_error_map_array" not in flip_metrics:
+            logger.warning(f"FLIP metrics present but no error map for {result.filename}")
+            return ""
+
+        # Load images
+        try:
+            from PIL import Image as PILImage
+            img1 = np.array(PILImage.open(result.known_good_path))
+            img2 = np.array(PILImage.open(result.new_image_path))
+            flip_map = flip_metrics["flip_error_map_array"]
+        except Exception as e:
+            logger.error(f"Failed to load images for FLIP visualization: {e}")
+            return ""
+
+        # Generate FLIP comparisons for each colormap
+        html_parts = []
+        html_parts.append('<div class="metrics flip-section">')
+        html_parts.append('<h2>FLIP Perceptual Analysis</h2>')
+
+        # Add metric summary
+        html_parts.append('<div class="flip-summary">')
+        html_parts.append('<table class="flip-metrics-table">')
+        html_parts.append('<tr>')
+        html_parts.append(f'<th>Mean Error</th><td>{flip_metrics["flip_mean"]:.6f}</td>')
+        html_parts.append(f'<th>Max Error</th><td>{flip_metrics["flip_max"]:.6f}</td>')
+        html_parts.append('</tr><tr>')
+        html_parts.append(f'<th>95th Percentile</th><td>{flip_metrics["flip_percentile_95"]:.6f}</td>')
+        html_parts.append(f'<th>Quality</th><td><strong>{flip_metrics["flip_quality_description"]}</strong></td>')
+        html_parts.append('</tr>')
+        html_parts.append('</table>')
+        html_parts.append('</div>')
+
+        # Generate tabbed colormap interface
+        html_parts.append('<div class="flip-colormap-tabs">')
+
+        # Tab buttons
+        html_parts.append('<div class="tab-buttons">')
+        for i, colormap in enumerate(self.config.flip_colormaps):
+            active_class = ' active' if colormap == self.config.flip_default_colormap else ''
+            html_parts.append(
+                f'<button class="tab-button{active_class}" '
+                f'onclick="showFlipTab(\'{colormap}\')">{colormap.capitalize()}</button>'
+            )
+        html_parts.append('</div>')
+
+        # Tab content
+        for colormap in self.config.flip_colormaps:
+            try:
+                flip_img_b64 = ImageProcessor.generate_flip_comparison_image(
+                    img1, img2, flip_map, colormap
+                )
+                display_style = 'block' if colormap == self.config.flip_default_colormap else 'none'
+
+                html_parts.append(f'<div id="flip-tab-{colormap}" class="tab-content" style="display: {display_style};">')
+                html_parts.append(
+                    f'<img src="data:image/png;base64,{flip_img_b64}" '
+                    f'alt="FLIP {colormap}" style="width: 100%; max-width: 1400px; margin: 10px 0;">'
+                )
+                html_parts.append('</div>')
+
+            except Exception as e:
+                logger.error(f"Failed to generate FLIP visualization for colormap {colormap}: {e}")
+
+        html_parts.append('</div>')  # Close flip-colormap-tabs
+
+        # Add JavaScript for tab switching
+        html_parts.append('''
+        <script>
+        function showFlipTab(colormapName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+
+            // Remove active class from all buttons
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+
+            // Show selected tab
+            const tabContent = document.getElementById('flip-tab-' + colormapName);
+            if (tabContent) {
+                tabContent.style.display = 'block';
+            }
+
+            // Add active class to clicked button
+            event.target.classList.add('active');
+        }
+        </script>
+        ''')
+
+        html_parts.append('</div>')  # Close metrics flip-section
+
+        return '\n'.join(html_parts)
+
     def _generate_historical_section(
         self, result: ComparisonResult, historical_data: Optional[List[dict]] = None
     ) -> str:
@@ -554,6 +726,72 @@ class ReportGenerator:
         if hasattr(result, 'is_anomaly') and result.is_anomaly:
             return '<span class="anomaly-badge-small" title="Statistical anomaly">⚠️</span>'
         return ""
+
+    def _generate_config_section(self) -> str:
+        """Generate HTML section displaying run configuration and settings.
+
+        Returns:
+            HTML string with configuration details
+        """
+        html_parts = []
+        html_parts.append('<div class="config-section">')
+        html_parts.append('<h2>Run Configuration</h2>')
+        html_parts.append('<div class="config-grid">')
+
+        # Paths
+        html_parts.append('<div class="config-group">')
+        html_parts.append('<h3>Directories</h3>')
+        html_parts.append('<dl class="config-list">')
+        html_parts.append('<dt>Base Directory</dt>')
+        html_parts.append(f'<dd><code>{self.config.base_dir}</code></dd>')
+        html_parts.append('<dt>New Images</dt>')
+        html_parts.append(f'<dd><code>{self.config.new_dir}</code></dd>')
+        html_parts.append('<dt>Known Good Images</dt>')
+        html_parts.append(f'<dd><code>{self.config.known_good_dir}</code></dd>')
+        html_parts.append('</dl>')
+        html_parts.append('</div>')
+
+        # Comparison Settings
+        html_parts.append('<div class="config-group">')
+        html_parts.append('<h3>Comparison Settings</h3>')
+        html_parts.append('<dl class="config-list">')
+        html_parts.append('<dt>Pixel Diff Threshold</dt>')
+        html_parts.append(f'<dd>{self.config.pixel_diff_threshold}%</dd>')
+        html_parts.append('<dt>SSIM Threshold</dt>')
+        html_parts.append(f'<dd>{self.config.ssim_threshold}</dd>')
+        html_parts.append('<dt>Color Distance Threshold</dt>')
+        html_parts.append(f'<dd>{self.config.color_distance_threshold}</dd>')
+        html_parts.append('<dt>Histogram Equalization</dt>')
+        html_parts.append(f'<dd>{"Enabled" if self.config.use_histogram_equalization else "Disabled"}</dd>')
+        html_parts.append('</dl>')
+        html_parts.append('</div>')
+
+        # Features
+        html_parts.append('<div class="config-group">')
+        html_parts.append('<h3>Enabled Features</h3>')
+        html_parts.append('<dl class="config-list">')
+        html_parts.append('<dt>FLIP Analysis</dt>')
+        html_parts.append(f'<dd>{"Enabled" if self.config.enable_flip else "Disabled"}</dd>')
+        if self.config.enable_flip:
+            html_parts.append('<dt>FLIP Pixels Per Degree</dt>')
+            html_parts.append(f'<dd>{self.config.flip_pixels_per_degree}</dd>')
+        html_parts.append('<dt>Historical Tracking</dt>')
+        html_parts.append(f'<dd>{"Enabled" if self.config.enable_history else "Disabled"}</dd>')
+        if self.config.enable_history and self.config.build_number:
+            html_parts.append('<dt>Build Number</dt>')
+            html_parts.append(f'<dd><code>{self.config.build_number}</code></dd>')
+        html_parts.append('<dt>Parallel Processing</dt>')
+        html_parts.append(f'<dd>{"Enabled" if self.config.enable_parallel else "Disabled"}</dd>')
+        if self.config.enable_parallel:
+            html_parts.append('<dt>Max Workers</dt>')
+            html_parts.append(f'<dd>{self.config.max_workers}</dd>')
+        html_parts.append('</dl>')
+        html_parts.append('</div>')
+
+        html_parts.append('</div>')  # config-grid
+        html_parts.append('</div>')  # config-section
+
+        return '\n'.join(html_parts)
 
     def _get_subdirectory_index_template(self) -> str:
         """Return HTML template for subdirectory index page.
@@ -967,6 +1205,75 @@ class ReportGenerator:
             padding: 2px 8px;
             border-radius: 3px;
         }
+        /* FLIP Section Styles */
+        .flip-section {
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .flip-section h2 {
+            border-bottom-color: rgba(255,255,255,0.3);
+            color: white;
+        }
+        .flip-summary {
+            margin-bottom: 20px;
+        }
+        .flip-metrics-table {
+            width: 100%;
+            background: rgba(255,255,255,0.1);
+            border-radius: 6px;
+            padding: 10px;
+        }
+        .flip-metrics-table th {
+            text-align: left;
+            color: rgba(255,255,255,0.8);
+            font-weight: normal;
+            padding: 8px 12px;
+            font-size: 0.9em;
+        }
+        .flip-metrics-table td {
+            text-align: left;
+            color: white;
+            font-weight: bold;
+            padding: 8px 12px;
+        }
+        .flip-colormap-tabs {
+            margin-top: 15px;
+        }
+        .tab-buttons {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+            background: rgba(255,255,255,0.1);
+            padding: 5px;
+            border-radius: 6px;
+        }
+        .tab-button {
+            flex: 1;
+            padding: 10px 20px;
+            border: none;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .tab-button:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-1px);
+        }
+        .tab-button.active {
+            background: rgba(255,255,255,0.3);
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .tab-content {
+            background: rgba(255,255,255,0.95);
+            padding: 10px;
+            border-radius: 6px;
+        }
         .deviation-normal {
             color: #27ae60 !important;
         }
@@ -1180,10 +1487,9 @@ class ReportGenerator:
 
         {{HISTORICAL_SECTION}}
 
-        <div class="metrics">
-            <h2>Histogram Comparison</h2>
-            <img src="data:image/png;base64,{{HISTOGRAM_DATA}}" alt="Histograms" style="width: 100%; max-width: 1000px; margin: 20px 0;">
-        </div>
+        {{FLIP_SECTION}}
+
+        {{HISTOGRAM_SECTION}}
 
         <div class="metrics">
             <h2>Detailed Metrics</h2>
@@ -1366,6 +1672,56 @@ class ReportGenerator:
             font-weight: bold;
             font-size: 0.9em;
         }
+        /* Configuration Section Styles */
+        .config-section {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .config-section h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .config-group {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 15px;
+        }
+        .config-group h3 {
+            color: #3498db;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+        }
+        .config-list {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 8px 15px;
+        }
+        .config-list dt {
+            font-weight: 600;
+            color: #555;
+        }
+        .config-list dd {
+            color: #333;
+        }
+        .config-list code {
+            background: #f1f3f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
@@ -1375,6 +1731,8 @@ class ReportGenerator:
             Total comparisons: <strong>{{TOTAL_COUNT}}</strong><br>
             Results grouped by subdirectory
         </div>
+
+        {{CONFIG_SECTION}}
 
         <table>
             <thead>
