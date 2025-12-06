@@ -352,47 +352,7 @@ class ComparisonUI:
         """Create historical tracking configuration widgets."""
         row = 0
 
-        # Parallel Processing Section
-        ttk.Label(
-            parent_frame, text="Parallel Processing", font=("Arial", 14, "bold")
-        ).grid(row=row, column=0, columnspan=3, pady=(0, 15), sticky=tk.W)
-
-        # Enable Parallel Processing
-        row += 1
-        self.enable_parallel_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            parent_frame,
-            text="Enable parallel processing",
-            variable=self.enable_parallel_var,
-            command=self._toggle_parallel_fields,
-        ).grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=5)
-
-        # Max Workers
-        row += 1
-        ttk.Label(parent_frame, text="Max Workers:").grid(
-            row=row, column=0, sticky=tk.W, pady=5
-        )
-        self.max_workers_var = tk.StringVar()
-        self.max_workers_entry = ttk.Entry(
-            parent_frame, textvariable=self.max_workers_var, width=10, state="disabled"
-        )
-        self.max_workers_entry.grid(row=row, column=1, sticky=tk.W, padx=5)
-
-        ttk.Label(
-            parent_frame,
-            text="(Optional - default: CPU count)",
-            foreground="gray",
-            font=("Arial", 8),
-        ).grid(row=row, column=2, sticky=tk.W)
-
-        # Separator
-        row += 1
-        ttk.Separator(parent_frame, orient="horizontal").grid(
-            row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=15
-        )
-
         # Historical Metrics Tracking
-        row += 1
         ttk.Label(
             parent_frame, text="Historical Metrics Tracking", font=("Arial", 14, "bold")
         ).grid(row=row, column=0, columnspan=3, pady=(0, 15), sticky=tk.W)

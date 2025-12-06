@@ -671,6 +671,29 @@ class ReportGenerator:
         html_parts.append(f'<dd class="composite-score">{result.composite_score:.2f}/100{anomaly_badge}</dd>')
         html_parts.append('</div>')
 
+        # Composite score explanation with weights
+        html_parts.append('<div class="composite-explanation">')
+        html_parts.append('<p class="explanation-text"><strong>Composite Score</strong> is a weighted combination of multiple metrics:</p>')
+        html_parts.append('<ul class="metric-weights">')
+
+        # Get weights from config (default: 0.25 each)
+        weights = getattr(self.config, 'composite_metric_weights', None)
+        if not weights:
+            weights = {
+                'pixel_diff': 0.25,
+                'ssim': 0.25,
+                'color_distance': 0.25,
+                'histogram': 0.25
+            }
+
+        html_parts.append(f'<li><strong>Pixel Difference:</strong> {weights.get("pixel_diff", 0.25) * 100:.0f}% weight</li>')
+        html_parts.append(f'<li><strong>SSIM (Structural Similarity):</strong> {weights.get("ssim", 0.25) * 100:.0f}% weight</li>')
+        html_parts.append(f'<li><strong>Color Distance:</strong> {weights.get("color_distance", 0.25) * 100:.0f}% weight</li>')
+        html_parts.append(f'<li><strong>Histogram Correlation:</strong> {weights.get("histogram", 0.25) * 100:.0f}% weight</li>')
+        html_parts.append('</ul>')
+        html_parts.append('<p class="explanation-text"><em>Lower scores indicate better similarity (0 = identical, 100 = completely different)</em></p>')
+        html_parts.append('</div>')
+
         # Historical statistics if available
         if hasattr(result, 'historical_mean') and result.historical_mean is not None:
             html_parts.append('<div class="history-stats">')
@@ -1198,6 +1221,34 @@ class ReportGenerator:
             color: white;
             font-weight: bold;
             font-size: 1.1em;
+        }
+        .composite-explanation {
+            background: rgba(255,255,255,0.15);
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            border-left: 4px solid rgba(255,255,255,0.4);
+        }
+        .explanation-text {
+            color: rgba(255,255,255,0.95);
+            margin: 0 0 10px 0;
+            line-height: 1.6;
+        }
+        .metric-weights {
+            list-style: none;
+            padding: 0;
+            margin: 15px 0;
+        }
+        .metric-weights li {
+            color: rgba(255,255,255,0.9);
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .metric-weights li:last-child {
+            border-bottom: none;
+        }
+        .metric-weights strong {
+            color: white;
         }
         .deviation-high {
             color: #e74c3c !important;
